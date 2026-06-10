@@ -13,16 +13,8 @@ export default function Header() {
         </h1>
       </div>
       <p className="text-white/80 text-sm md:text-base">
-        基于 GitHub 私有仓库的个人图床
+        基于 GitHub 私有仓库的独立图床
       </p>
-      <div className="flex items-center justify-center gap-4 mt-3 text-xs text-white/60">
-        <a href="https://github.com/chnbsdan" target="_blank" rel="noopener noreferrer" className="hover:text-white transition flex items-center gap-1">
-          <Github className="w-3 h-3" /> chnbsdan
-        </a>
-        <a href="https://aoso.hangdn.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition flex items-center gap-1">
-          <ExternalLink className="w-3 h-3" /> 博客
-        </a>
-      </div>
     </div>
   )
 }
