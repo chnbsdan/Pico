@@ -133,15 +133,15 @@ function App() {
 
   return (
     <div className="min-h-screen py-8 px-4 relative">
-      {/* 左上角 LOGO - 使用 favicon.ico */}
+      {/* 左上角 LOGO - 无背景，直接贴在边缘 */}
       <a 
         href="https://github.com/chnbsdan/imgbed" 
         target="_blank" 
         rel="noopener noreferrer"
-        className="fixed top-4 left-4 z-50 bg-white/30 backdrop-blur-md p-2 rounded-xl hover:bg-white/50 transition-all duration-300 shadow-lg"
-        title="GitHub 仓库"
+        className="fixed top-4 left-4 z-50"
+        title="GitHub仓库"
       >
-        <img src="/favicon.ico" alt="Logo" className="w-6 h-6" />
+        <img src="/favicon.ico" alt="Logo" className="w-6 h-6 hover:opacity-80 transition-opacity" />
       </a>
 
       <div className="max-w-4xl mx-auto">
