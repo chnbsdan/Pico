@@ -5,11 +5,9 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
-// API 基础地址 - 生产环境使用你的域名
-const API_BASE = import.meta.env.DEV ? '' : 'https://tk.hangdn.com'
-
+// 使用相对路径，调用同域下的 API
 export async function fetchStats() {
-  const res = await fetch(`${API_BASE}/stats`)
+  const res = await fetch(`/api/stats`)
   if (!res.ok) throw new Error('Failed to fetch stats')
   return res.json()
 }
@@ -19,7 +17,7 @@ export async function uploadImage(file, folder) {
   formData.append('file', file)
   formData.append('folder', folder)
   
-  const res = await fetch(`${API_BASE}/api/upload`, {
+  const res = await fetch(`/api/upload`, {
     method: 'POST',
     body: formData,
   })
