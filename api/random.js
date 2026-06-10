@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       })
       if (response.ok) {
         const files = await response.json()
-        const images = files.filter(f => f.name && f.name.match(/\.(jpg|jpeg|png|webp|gif)$/i)).map(f => f.download_url)
+        const images = files.filter(f => f.name && f.name.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i)).map(f => f.download_url)
         allImages.push(...images)
       }
     }
