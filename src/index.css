@@ -4,29 +4,49 @@
 
 @layer base {
   body {
-    /* 渐变色背景 - 现代感 */
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-    min-height: 100vh;
+    /* 背景图 - 通过 JS 动态设置，这里放备用色 */
+    background-color: #1a1a2e;
+    background-size: cover;
+    background-position: center center;
     background-attachment: fixed;
+    min-height: 100vh;
+    transition: background-image 0.5s ease;
+  }
+  
+  /* 半透明遮罩层，让卡片更易读 */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  body > * {
+    position: relative;
+    z-index: 1;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20;
+    @apply bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/30;
   }
   
   .upload-area {
-    @apply transition-all duration-200 rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer;
+    @apply transition-all duration-200 rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer bg-white/50 backdrop-blur-sm;
+  }
+  
+  .upload-area:hover {
+    @apply border-blue-500 bg-blue-50/80;
   }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -36,5 +56,5 @@
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s ease-out;
+  animation: fadeIn 0.4s ease-out;
 }
