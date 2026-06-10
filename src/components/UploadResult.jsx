@@ -5,34 +5,29 @@ export default function UploadResult({ results }) {
   const [previewLoading, setPreviewLoading] = useState({})
   const [copied, setCopied] = useState(null)
 
-  const handleCopy = (url, id, e) => {
-    e.stopPropagation()  // 阻止冒泡
+  const handleCopy = (url, id) => {
     copyToClipboard(url)
     setCopied(id)
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const handlePreview = (url, id, e) => {
-    e.stopPropagation()  // 阻止冒泡
-    setPreviewLoading(prev => ({ ...prev, [id]: true }))
+  const handlePreview = (url, id) => {
+    // 直接设置预览，不需要事件冒泡处理
+    const container = document.getElementById(`preview-${id}`)
+    if (!container) return
+    
+    container.innerHTML = '<div class="text-xs text-gray-400 flex items-center gap-1"><div class="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> 加载中...</div>'
+    
     const img = new Image()
     img.onload = () => {
-      const container = document.getElementById(`preview-${id}`)
-      if (container) {
-        container.innerHTML = ''
-        container.appendChild(img)
-        setPreviewLoading(prev => ({ ...prev, [id]: false }))
-      }
+      container.innerHTML = ''
+      container.appendChild(img)
+      img.className = 'max-w-full max-h-24 rounded-lg mt-2'
     }
     img.onerror = () => {
-      const container = document.getElementById(`preview-${id}`)
-      if (container) {
-        container.innerHTML = '<span class="text-xs text-red-500">加载失败</span>'
-        setPreviewLoading(prev => ({ ...prev, [id]: false }))
-      }
+      container.innerHTML = '<span class="text-xs text-red-500">加载失败</span>'
     }
     img.src = url + '?t=' + Date.now()
-    img.className = 'max-w-full max-h-24 rounded-lg mt-2'
   }
 
   if (results.length === 0) return null
@@ -41,7 +36,11 @@ export default function UploadResult({ results }) {
     <div className="space-y-3 mt-4 animate-slide-up">
       <h4 className="text-sm font-medium text-gray-700">上传结果</h4>
       {results.map((result, idx) => (
-        <div key={idx} className={`rounded-xl p-3 ${result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+        <div 
+          key={idx} 
+          className={`rounded-xl p-3 ${result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -55,29 +54,34 @@ export default function UploadResult({ results }) {
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
                     <code className="text-xs bg-white px-2 py-1 rounded flex-1 truncate">{result.url}</code>
                     <button
-                      onClick={(e) => handleCopy(result.url, `url-${idx}`, e)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCopy(result.url, `url-${idx}`)
+                      }}
                       className="p-1.5 hover:bg-white rounded-lg transition"
                     >
                       {copied === `url-${idx}` ? <i className="fas fa-check text-green-500"></i> : <i className="fas fa-copy text-gray-400"></i>}
                     </button>
-                    <a href={result.url} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-white rounded-lg transition" onClick={(e) => e.stopPropagation()}>
+                    <a 
+                      href={result.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="p-1.5 hover:bg-white rounded-lg transition"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <i className="fas fa-external-link-alt text-gray-400"></i>
                     </a>
                     <button
-                      onClick={(e) => handlePreview(result.url, idx, e)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handlePreview(result.url, idx)
+                      }}
                       className="p-1.5 hover:bg-white rounded-lg transition"
                     >
                       <i className="fas fa-eye text-gray-400"></i>
                     </button>
                   </div>
-                  <div id={`preview-${idx}`} className="mt-2">
-                    {previewLoading[idx] && (
-                      <div className="flex items-center gap-1 text-xs text-gray-400">
-                        <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                        加载中...
-                      </div>
-                    )}
-                  </div>
+                  <div id={`preview-${idx}`} className="mt-2"></div>
                 </>
               )}
               {!result.success && <p className="text-xs text-red-500 mt-1">{result.error}</p>}
