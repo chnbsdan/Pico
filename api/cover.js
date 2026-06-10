@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       return res.status(500).send('Invalid response from GitHub')
     }
     
-    const images = files.filter(f => f.name && f.name.match(/\.(jpg|jpeg|png|webp|gif)$/i))
+    const images = files.filter(f => f.name && f.name.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i))
       .map(f => f.download_url)
     
     if (images.length === 0) {
