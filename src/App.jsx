@@ -88,7 +88,7 @@ function App() {
       let file = fileArray[i]
       const ext = file.name.split('.').pop().toLowerCase()
       
-      if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+      if (!['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'].includes(ext)) {
         results.push({ success: false, filename: file.name, error: '格式不支持', folder })
         continue
       }
@@ -132,26 +132,26 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4 relative">
-      {/* 左上角 LOGO - 无背景，直接贴在边缘 */}
+    <div className="min-h-screen py-6 px-4 relative">
+      {/* 左上角 LOGO */}
       <a 
         href="https://github.com/chnbsdan/imgbed" 
         target="_blank" 
         rel="noopener noreferrer"
-        className="fixed top-2 left-2 z-50"
-        title="GitHub仓库"
+        className="fixed top-3 left-3 z-50"
+        title="GitHub 仓库"
       >
-        <img src="/favicon.ico" alt="Logo" className="w-12 h-12 hover:opacity-80 transition-opacity" />
+        <img src="/favicon.ico" alt="Logo" className="w-8 h-8 hover:opacity-80 transition-opacity" />
       </a>
 
       <div className="max-w-4xl mx-auto">
-        <Header onRefreshBg={setRandomBackground} />
+        <Header />
         
         {/* 卡片区域 - 毛玻璃效果 */}
-        <div className="space-y-6 backdrop-blur-md bg-white/30 rounded-2xl p-6 shadow-xl border border-white/30">
+        <div className="space-y-4 backdrop-blur-md bg-white/30 rounded-xl p-4 shadow-xl border border-white/30">
           <StatsCard stats={stats} />
           <ApiSection />
-          <UploadArea onUpload={handleUpload} isLoading={isUploading} />
+          <UploadArea onUpload={handleUpload} isLoading={isUploading} onRefreshBg={setRandomBackground} />
           <UploadResult results={uploadResults} />
         </div>
         
