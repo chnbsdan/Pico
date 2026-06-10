@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { Copy, Check, ExternalLink, Eye, Loader2 } from 'lucide-react'
 import { copyToClipboard } from '../lib/api'
 
 export default function UploadResult({ results }) {
@@ -47,7 +46,7 @@ export default function UploadResult({ results }) {
                 <span className={`text-sm font-medium ${result.success ? 'text-green-700' : 'text-red-700'}`}>
                   {result.success ? '✓' : '✗'} {result.filename}
                 </span>
-                <span className="text-xs text-gray-500">{result.folder === 'wallpaper' ? '横屏' : '竖屏'}</span>
+                <span className="text-xs text-gray-500">{result.folder === 'wallpaper' ? '📐横屏' : '📱竖屏'}</span>
               </div>
               {result.success && result.url && (
                 <>
@@ -57,22 +56,23 @@ export default function UploadResult({ results }) {
                       onClick={() => handleCopy(result.url, `url-${idx}`)}
                       className="p-1.5 hover:bg-white rounded-lg transition"
                     >
-                      {copied === `url-${idx}` ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-400" />}
+                      {copied === `url-${idx}` ? <span className="text-green-500">✓</span> : <span className="text-gray-400">📋</span>}
                     </button>
                     <a href={result.url} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-white rounded-lg transition">
-                      <ExternalLink className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-400">🔗</span>
                     </a>
                     <button
                       onClick={() => handlePreview(result.url, idx)}
                       className="p-1.5 hover:bg-white rounded-lg transition"
                     >
-                      <Eye className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-400">👁️</span>
                     </button>
                   </div>
                   <div id={`preview-${idx}`} className="mt-2">
                     {previewLoading[idx] && (
                       <div className="flex items-center gap-1 text-xs text-gray-400">
-                        <Loader2 className="w-3 h-3 animate-spin" /> 加载中...
+                        <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        加载中...
                       </div>
                     )}
                   </div>
