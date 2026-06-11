@@ -138,17 +138,17 @@ function App() {
         href="https://github.com/chnbsdan/imgbed" 
         target="_blank" 
         rel="noopener noreferrer"
-        className="fixed top-3 left-3 z-50"
+        className="fixed top-1 left-1 z-50"
         title="GitHub 仓库"
       >
-        <img src="/favicon.ico" alt="Logo" className="w-8 h-8 hover:opacity-80 transition-opacity" />
+        <img src="/favicon.ico" alt="Logo" className="w-12 h-12 hover:opacity-80 transition-opacity" />
       </a>
 
       <div className="max-w-4xl mx-auto">
         <Header />
         
         {/* 卡片区域 - 毛玻璃效果 */}
-        <div className="space-y-4 backdrop-blur-md bg-white/5 rounded-xl p-4 shadow-xl border border-white/40">
+        <div className="space-y-4 backdrop-blur-md bg-white/5 rounded-xl p-4 shadow-xl border border-white/30">
           <StatsCard stats={stats} />
           <ApiSection />
           <UploadArea onUpload={handleUpload} isLoading={isUploading} onRefreshBg={setRandomBackground} />
