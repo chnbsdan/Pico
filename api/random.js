@@ -1,10 +1,10 @@
-// api/random.js - 随机图片接口（全部分类 + 外部图片）
+// api/random.js - 获取全部图片（包括两个分类的外部图片）
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'imgbed-storage'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 const FOLDERS = ['wallpaper', 'cover']
 
-// 从 GitHub 存储仓库读取外部图片列表
+// 从 GitHub 存储仓库读取所有外部图片
 async function getExternalImages() {
   try {
     const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/external.json`
@@ -17,7 +17,8 @@ async function getExternalImages() {
     })
     if (response.ok) {
       const data = await response.json()
-      return data.images || []
+      // 合并两个分类的外部图片
+      return [...(data.wallpaper || []), ...(data.cover || [])]
     }
   } catch (error) {
     console.error('Failed to fetch external images:', error)
@@ -25,7 +26,6 @@ async function getExternalImages() {
   return []
 }
 
-// 验证图片是否有效
 async function isImageValid(url) {
   try {
     const controller = new AbortController()
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   try {
     let allImages = []
     
-    // 1. 获取 GitHub 存储仓库的图片
+    // 1. 获取 GitHub 图片
     for (const folder of FOLDERS) {
       const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${folder}`
       const response = await fetch(apiUrl, {
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       }
     }
     
-    // 2. 获取外部图片（从 GitHub JSON 文件）
+    // 2. 获取所有外部图片
     const externalImages = await getExternalImages()
     for (const url of externalImages) {
       if (await isImageValid(url)) {
