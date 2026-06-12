@@ -15,15 +15,14 @@ export default function Manage() {
   const [previewImage, setPreviewImage] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
-  // 生成代理 URL 的函数
-  const getProxyUrl = (img) => {
-    // 外部图片直接返回原链接
-    if (img.source === 'external') {
-      return img.url
-    }
-    // 本地图片返回代理格式
-    return `https://pcbed.vercel.app/${img.folder}/${img.name}`
+// 生成代理 URL
+const getProxyUrl = (img) => {
+  if (img.source === 'external') {
+    return img.url
   }
+  // 使用新的 API 格式
+  return `/api/image?path=${img.folder}/${img.name}`
+}
 
   // 验证密码
   const handleLogin = (e) => {
