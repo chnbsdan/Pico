@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/api/admin/list", "destination": "/api/admin/list" },
+    { "source": "/api/admin/delete", "destination": "/api/admin/delete" },
     { "source": "/api/random", "destination": "/api/random" },
     { "source": "/api/wallpaper", "destination": "/api/wallpaper" },
     { "source": "/api/cover", "destination": "/api/cover" },
@@ -7,9 +9,10 @@
     { "source": "/api/list", "destination": "/api/list" },
     { "source": "/api/stats", "destination": "/api/stats" },
     { "source": "/api/upload", "destination": "/api/upload" },
-    { "source": "/api/admin/list", "destination": "/api/admin/list" },
-    { "source": "/wallpaper/:path*", "destination": "/api/img/:path*" },
-    { "source": "/cover/:path*", "destination": "/api/img/:path*" },
+    { "source": "/api/img/(.*)", "destination": "/api/img/$1" },
+    { "source": "/wallpaper/(.*)", "destination": "/api/img/$1" },
+    { "source": "/cover/(.*)", "destination": "/api/img/$1" },
+    { "source": "/manage", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
