@@ -21,3 +21,10 @@ export async function uploadImage(file, folder) {
 export function copyToClipboard(text) {
   navigator.clipboard.writeText(text)
 }
+
+// 🆕 获取图片列表
+export async function fetchImageList() {
+  const res = await fetch(`/api/admin/list`)
+  if (!res.ok) throw new Error('Failed to fetch image list')
+  return res.json()
+}
