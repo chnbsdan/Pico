@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     const boundary = getBoundary(contentType)
     if (!boundary) return res.status(400).json({ error: 'Cannot parse boundary' })
     
-    const formData = parseMultipart(buffer, boundary)
+    const formData = await parseMultipart(buffer, boundary)  // 🔧 改为 await
     const file = formData.file
     const targetFolder = formData.folder || 'wallpaper'
     
@@ -49,7 +49,11 @@ export default async function handler(req, res) {
       body: JSON.stringify({ message: `Upload ${filename}`, content: base64Content, branch: 'main' })
     })
     
-    if (!response.ok) return res.status(response.status).json({ error: 'GitHub upload failed' })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('GitHub API error:', errorText)
+      return res.status(response.status).json({ error: 'GitHub upload failed' })
+    }
     
     const host = req.headers.host
     const protocol = req.headers['x-forwarded-proto'] || 'https'
@@ -57,6 +61,7 @@ export default async function handler(req, res) {
     
     res.status(200).json({ success: true, filename, folder: targetFolder, url: fullUrl })
   } catch (error) {
+    console.error('Upload error:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 }
@@ -66,29 +71,55 @@ function getBoundary(contentType) {
   return match ? (match[1] || match[2]) : null
 }
 
-function parseMultipart(buffer, boundary) {
+// 🔧 重写 parseMultipart 函数，使用 Buffer 而不是 binary 字符串
+async function parseMultipart(buffer, boundary) {
   const result = {}
-  const parts = buffer.toString('binary').split(`--${boundary}`)
+  const boundaryBuffer = Buffer.from(`--${boundary}`)
+  const endBoundaryBuffer = Buffer.from(`--${boundary}--`)
   
-  for (const part of parts) {
-    if (part === '--' || part === '' || part === '--\r\n') continue
-    const headerEnd = part.indexOf('\r\n\r\n')
+  let start = 0
+  let end = buffer.indexOf(boundaryBuffer, start)
+  
+  while (end !== -1) {
+    start = end + boundaryBuffer.length
+    end = buffer.indexOf(boundaryBuffer, start)
+    
+    let partEnd = end !== -1 ? end : buffer.length
+    const part = buffer.slice(start, partEnd)
+    
+    // 跳过空部分
+    if (part.length <= 2) continue
+    
+    // 查找 header 结束位置（\r\n\r\n）
+    let headerEnd = -1
+    for (let i = 0; i < part.length - 3; i++) {
+      if (part[i] === 13 && part[i+1] === 10 && part[i+2] === 13 && part[i+3] === 10) {
+        headerEnd = i
+        break
+      }
+    }
     if (headerEnd === -1) continue
-    const headers = part.slice(0, headerEnd)
-    const content = part.slice(headerEnd + 4, part.lastIndexOf('\r\n--'))
+    
+    const headers = part.slice(0, headerEnd).toString('utf-8')
+    const content = part.slice(headerEnd + 4, part.length - 2) // 去掉末尾的\r\n
+    
+    // 解析 name
     const nameMatch = headers.match(/name="([^"]+)"/)
     if (!nameMatch) continue
     const name = nameMatch[1]
+    
+    // 检查是否是文件
     if (headers.includes('filename')) {
       const filenameMatch = headers.match(/filename="([^"]+)"/)
       result[name] = {
         filename: filenameMatch ? filenameMatch[1] : 'unknown',
-        data: Buffer.from(content, 'binary'),
-        size: Buffer.byteLength(content, 'binary')
+        data: Buffer.from(content),  // 直接使用 Buffer
+        size: content.length
       }
     } else {
-      result[name] = content.trim()
+      result[name] = content.toString('utf-8').trim()
     }
   }
+  
   return result
 }
