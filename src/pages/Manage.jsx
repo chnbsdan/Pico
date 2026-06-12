@@ -38,7 +38,7 @@ export default function Manage() {
 
   const handleLogin = (e) => {
     e.preventDefault()
-    if (password === 'your-password') {
+    if (password === 'admin123') {
       setIsAuthenticated(true)
       setPasswordError(false)
       loadImages()
