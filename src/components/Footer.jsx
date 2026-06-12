@@ -31,8 +31,7 @@ export default function Footer() {
 
   return (
     <footer className="text-center mt-8 pt-4 border-t border-white/20 text-white/40 text-xs">
-      
-      {/* 技术栈徽章 - 使用 Shields.io */}
+      {/* 技术栈徽章 */}
       <div className="flex justify-center items-center gap-2 mb-4 flex-wrap">
         <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">
           <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" className="h-5" />
@@ -56,19 +55,26 @@ export default function Footer() {
         <a href="https://github.com/chnbsdan" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-white transition ml-1">GitHub</a>
       </p>
       
+      {/* 🆕 管理入口 */}
+      <p className="mt-2">
+        <a href="/manage" className="text-white/60 hover:text-white transition text-xs flex items-center justify-center gap-1">
+          <i className="fas fa-cog"></i>
+          图片管理
+        </a>
+      </p>
+      
       {/* 稳定运行时间 */}
-      <p className="mt-3 text-white/60 text-xs flex items-center justify-center gap-1 flex-wrap">
-        <span className="ml-1">当前服务器运行正常</span>
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-        </span>
-        | 本站已稳定运行
+      <p className="mt-2 text-white/60 text-xs flex items-center justify-center gap-1 flex-wrap">
+        本站已稳定运行
         <span className="text-white/80 font-mono mx-1">{timeElapsed.days}</span>天
         <span className="text-white/80 font-mono mx-1">{timeElapsed.hours}</span>小时
         <span className="text-white/80 font-mono mx-1">{timeElapsed.minutes}</span>分钟
         <span className="text-white/80 font-mono mx-1">{timeElapsed.seconds}</span>秒
-        
+        <span className="ml-1">| 服务器运行正常</span>
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+        </span>
       </p>
 
       <p className="mt-2 text-white/80 text-xs">
