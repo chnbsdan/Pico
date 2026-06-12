@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { copyToClipboard } from '../lib/api'
 
 export default function UploadResult({ results }) {
-  const [previewLoading, setPreviewLoading] = useState({})
   const [copied, setCopied] = useState(null)
 
   const handleCopy = (url, id) => {
@@ -12,7 +11,6 @@ export default function UploadResult({ results }) {
   }
 
   const handlePreview = (url, id) => {
-    // 直接设置预览，不需要事件冒泡处理
     const container = document.getElementById(`preview-${id}`)
     if (!container) return
     
@@ -30,9 +28,10 @@ export default function UploadResult({ results }) {
     img.src = url + '?t=' + Date.now()
   }
 
-  // 生成代理 URL
+  // 生成完整的代理 URL（动态获取域名）
   const getProxyUrl = (folder, filename) => {
-    return `/api/image?path=${folder}/${filename}`
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pcbed.vercel.app'
+    return `${baseUrl}/api/image?path=${folder}/${filename}`
   }
 
   if (results.length === 0) return null
@@ -41,7 +40,6 @@ export default function UploadResult({ results }) {
     <div className="space-y-3 mt-4 animate-slide-up">
       <h4 className="text-sm font-medium text-green-500">上传结果</h4>
       {results.map((result, idx) => {
-        // 生成代理链接
         const proxyUrl = result.success && result.filename ? getProxyUrl(result.folder, result.filename) : null
         
         return (
