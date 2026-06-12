@@ -1,4 +1,4 @@
-// src/pages/Manage.jsx - 图片管理页面（Font Awesome 图标版）
+// src/pages/Manage.jsx - 图片管理页面（完整版）
 import React, { useState, useEffect } from 'react'
 import { fetchImageList, copyToClipboard } from '../lib/api'
 
@@ -12,9 +12,18 @@ export default function Manage() {
   const [activeTab, setActiveTab] = useState('wallpaper')
   const [copiedId, setCopiedId] = useState(null)
   
-  // 预览弹窗状态
   const [previewImage, setPreviewImage] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+
+  // 生成代理 URL 的函数
+  const getProxyUrl = (img) => {
+    // 外部图片直接返回原链接
+    if (img.source === 'external') {
+      return img.url
+    }
+    // 本地图片返回代理格式
+    return `https://pcbed.vercel.app/${img.folder}/${img.name}`
+  }
 
   // 验证密码
   const handleLogin = (e) => {
@@ -42,14 +51,21 @@ export default function Manage() {
     }
   }
 
-  const handleCopy = (url, name) => {
+  // 统一的复制处理函数
+  const handleCopy = (url, name, event) => {
+    if (event) {
+      event.stopPropagation()
+    }
     copyToClipboard(url)
     setCopiedId(name)
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // 删除图片
-  const handleDelete = async (img, folder) => {
+  const handleDelete = async (img, folder, event) => {
+    if (event) {
+      event.stopPropagation()
+    }
+    
     if (!confirm(`确定要删除 "${img.name}" 吗？\n\n⚠️ 此操作不可恢复！`)) {
       return
     }
@@ -63,7 +79,8 @@ export default function Manage() {
         body: JSON.stringify({
           filename: img.name,
           folder: folder,
-          sha: img.sha
+          sha: img.sha,
+          source: img.source
         })
       })
       
@@ -209,64 +226,67 @@ export default function Manage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {currentImages.map((img, idx) => (
-              <div
-                key={img.sha || idx}
-                className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden border border-white/20 hover:border-white/40 transition-all hover:scale-105 hover:shadow-xl"
-              >
-                {/* 图片区域 - 点击放大 */}
-                <div 
-                  className="aspect-square bg-black/30 overflow-hidden cursor-pointer relative"
-                  onClick={() => setPreviewImage(img)}
+            {currentImages.map((img, idx) => {
+              const proxyUrl = getProxyUrl(img)
+              return (
+                <div
+                  key={img.sha || idx}
+                  className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden border border-white/20 hover:border-white/40 transition-all hover:scale-105 hover:shadow-xl"
                 >
-                  <img
-                    src={img.url}
-                    alt={img.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" text-anchor="middle" dy=".3em" fill="%23ccc">?</text></svg>'
-                    }}
-                  />
-                  {/* 悬停预览提示 */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                    <i className="fas fa-search-plus text-white text-xl"></i>
+                  {/* 图片区域 - 点击放大 */}
+                  <div 
+                    className="aspect-square bg-black/30 overflow-hidden cursor-pointer relative"
+                    onClick={() => setPreviewImage(img)}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" text-anchor="middle" dy=".3em" fill="%23ccc">?</text></svg>'
+                      }}
+                    />
+                    {/* 悬停预览提示 */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                      <i className="fas fa-search-plus text-white text-xl"></i>
+                    </div>
                   </div>
-                </div>
-                
-                {/* 图片信息 */}
-                <div className="p-2">
-                  <p className="text-white/80 text-xs truncate" title={img.name}>
-                    {img.name}
-                  </p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] text-white/40 flex items-center gap-1">
-                      {img.source === 'external' ? <i className="fas fa-globe"></i> : <i className="fas fa-database"></i>}
-                      {img.source === 'external' ? '外部' : '本地'}
-                    </span>
-                    <div className="flex gap-1">
-                      {/* 复制按钮 */}
-                      <button
-                        onClick={() => handleCopy(img.url, img.name)}
-                        className="text-white/60 hover:text-green-400 transition text-xs flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10"
-                        title="复制链接"
-                      >
-                        {copiedId === img.name ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
-                      </button>
-                      {/* 删除按钮 */}
-                      <button
-                        onClick={() => handleDelete(img, activeTab)}
-                        disabled={deletingId === img.name}
-                        className="text-white/60 hover:text-red-400 transition text-xs flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 disabled:opacity-50"
-                        title="删除图片"
-                      >
-                        {deletingId === img.name ? <i className="fas fa-spinner fa-pulse"></i> : <i className="fas fa-trash-alt"></i>}
-                      </button>
+                  
+                  {/* 图片信息 */}
+                  <div className="p-2">
+                    <p className="text-white/80 text-xs truncate" title={img.name}>
+                      {img.name}
+                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-white/40 flex items-center gap-1">
+                        {img.source === 'external' ? <i className="fas fa-globe"></i> : <i className="fas fa-database"></i>}
+                        {img.source === 'external' ? '外部' : '本地'}
+                      </span>
+                      <div className="flex gap-1">
+                        {/* 复制按钮 - 使用代理链接 */}
+                        <button
+                          onClick={(e) => handleCopy(proxyUrl, img.name, e)}
+                          className="text-white/60 hover:text-green-400 transition text-xs flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10"
+                          title="复制链接"
+                        >
+                          {copiedId === img.name ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
+                        </button>
+                        {/* 删除按钮 */}
+                        <button
+                          onClick={(e) => handleDelete(img, activeTab, e)}
+                          disabled={deletingId === img.name}
+                          className="text-white/60 hover:text-red-400 transition text-xs flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 disabled:opacity-50"
+                          title="删除图片"
+                        >
+                          {deletingId === img.name ? <i className="fas fa-spinner fa-pulse"></i> : <i className="fas fa-trash-alt"></i>}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -277,7 +297,10 @@ export default function Manage() {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
           onClick={() => setPreviewImage(null)}
         >
-          <div className="relative max-w-[90vw] max-h-[90vh]">
+          <div 
+            className="relative max-w-[90vw] max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <img
               src={previewImage.url}
               alt={previewImage.name}
@@ -285,7 +308,10 @@ export default function Manage() {
             />
             {/* 关闭按钮 */}
             <button
-              onClick={() => setPreviewImage(null)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setPreviewImage(null)
+              }}
               className="absolute -top-12 right-0 text-white/70 hover:text-white text-2xl flex items-center gap-1"
             >
               <i className="fas fa-times-circle"></i>
@@ -298,15 +324,22 @@ export default function Manage() {
               </p>
               <div className="flex justify-end gap-3 mt-2">
                 <button
-                  onClick={() => handleCopy(previewImage.url, previewImage.name)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const proxyUrl = getProxyUrl(previewImage)
+                    copyToClipboard(proxyUrl)
+                    setCopiedId(previewImage.name)
+                    setTimeout(() => setCopiedId(null), 2000)
+                  }}
                   className="text-white/70 hover:text-green-400 text-sm flex items-center gap-1 transition"
                 >
                   <i className="fas fa-copy"></i>
                   复制链接
                 </button>
                 <button
-                  onClick={() => {
-                    handleDelete(previewImage, activeTab)
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(previewImage, activeTab, e)
                     setPreviewImage(null)
                   }}
                   className="text-white/70 hover:text-red-400 text-sm flex items-center gap-1 transition"
