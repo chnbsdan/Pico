@@ -6,12 +6,21 @@ import UploadArea from './components/UploadArea'
 import UploadResult from './components/UploadResult'
 import Footer from './components/Footer'
 import { fetchStats, uploadImage } from './lib/api'
+import Manage from './pages/Manage'  // 🆕 导入管理页面
 
 function App() {
   const [stats, setStats] = useState({ grand_total: 0, github_folders: { wallpaper: 0, cover: 0 }, external_total: 0 })
   const [uploadResults, setUploadResults] = useState([])
   const [isUploading, setIsUploading] = useState(false)
   const [convertToWebp, setConvertToWebp] = useState(false)  // 是否转换为 WebP
+
+  // 🆕 检查是否在管理页面
+  const isManagePage = typeof window !== 'undefined' && window.location.pathname === '/manage'
+  
+  // 如果在管理页面，直接返回管理组件
+  if (isManagePage) {
+    return <Manage />
+  }
 
   // 设置随机背景
   const setRandomBackground = useCallback(() => {
