@@ -23,7 +23,7 @@ export default function UploadResult({ results }) {
       img.className = 'max-w-full max-h-24 rounded-lg mt-2'
     }
     img.onerror = () => {
-      container.innerHTML = '<span class="text-xs text-red-500">加载失败</span>' 
+      container.innerHTML = '<span class="text-xs text-red-500">加载失败</span>'
     }
     img.src = url + '?t=' + Date.now()
   }
@@ -36,27 +36,27 @@ export default function UploadResult({ results }) {
       {results.map((result, idx) => (
         <div 
           key={idx} 
-          className={`rounded-xl p-3 ${result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}
+          className={`rounded-xl p-3 ${result.success ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-sm font-medium ${result.success ? 'text-green-700' : 'text-red-700'}`}>
+                <span className={`text-sm font-medium ${result.success ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                   {result.success ? '✓' : '✗'} {result.filename}
                 </span>
-                <span className="text-xs text-gray-500">{result.folder === 'wallpaper' ? '横屏' : '竖屏'}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{result.folder === 'wallpaper' ? '横屏' : '竖屏'}</span>
               </div>
               {result.success && result.url && (
                 <>
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <code className="text-xs bg-white px-2 py-1 rounded flex-1 truncate">{result.url}</code>
+                    <code className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded flex-1 truncate text-gray-700 dark:text-gray-300">{result.url}</code>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         handleCopy(result.url, `url-${idx}`)
                       }}
-                      className="p-1.5 hover:bg-white rounded-lg transition"
+                      className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
                     >
                       {copied === `url-${idx}` ? <i className="fas fa-check text-green-500"></i> : <i className="fas fa-copy text-gray-400"></i>}
                     </button>
@@ -64,7 +64,7 @@ export default function UploadResult({ results }) {
                       href={result.url} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="p-1.5 hover:bg-white rounded-lg transition"
+                      className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <i className="fas fa-external-link-alt text-gray-400"></i>
@@ -74,7 +74,7 @@ export default function UploadResult({ results }) {
                         e.stopPropagation()
                         handlePreview(result.url, idx)
                       }}
-                      className="p-1.5 hover:bg-white rounded-lg transition"
+                      className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
                     >
                       <i className="fas fa-eye text-gray-400"></i>
                     </button>
