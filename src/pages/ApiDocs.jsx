@@ -1,4 +1,4 @@
-// src/pages/ApiDocs.jsx - API 接口文档页面
+// src/pages/ApiDocs.jsx - API 接口文档页面（带打开链接按钮）
 import React, { useState } from 'react'
 import { copyToClipboard } from '../lib/api'
 import ThemeToggle from '../components/ThemeToggle'
@@ -133,60 +133,76 @@ export default function ApiDocs() {
 
         {/* API 列表 */}
         <div className="space-y-4">
-          {apis.map((api) => (
-            <div key={api.id} className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
-              {/* 接口头部 */}
-              <div className="flex items-center justify-between p-4 border-b border-white/20 bg-white/5">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className={`px-2 py-1 rounded text-xs font-mono ${
-                    api.method === 'GET' ? 'bg-green-500/80 text-white' : 'bg-orange-500/80 text-white'
-                  }`}>
-                    {api.method}
-                  </span>
-                  <code className="text-white/90 text-sm font-mono">{api.path}</code>
-                </div>
-                <button
-                  onClick={() => handleCopy(`${baseUrl}${api.path}`, api.id)}
-                  className="text-white/60 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10"
-                  title="复制接口地址"
-                >
-                  {copiedApi === api.id ? <i className="fas fa-check text-green-400"></i> : <i className="fas fa-copy"></i>}
-                </button>
-              </div>
-              
-              {/* 接口内容 */}
-              <div className="p-4 space-y-3">
-                <p className="text-white/70 text-sm">{api.description}</p>
-                
-                <div>
-                  <p className="text-white/50 text-xs mb-1">📝 示例</p>
-                  <div className="bg-black/40 rounded-lg p-3 overflow-x-auto">
-                    <code className="text-white/80 text-xs font-mono break-all">{api.example}</code>
-                    <button
-                      onClick={() => handleCopy(api.example, `example-${api.id}`)}
-                      className="ml-3 text-white/40 hover:text-white/80 transition text-xs"
-                      title="复制示例"
+          {apis.map((api) => {
+            const fullUrl = `${baseUrl}${api.path}${api.id === 'image' ? '?path=wallpaper/example.jpg' : ''}`
+            return (
+              <div key={api.id} className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+                {/* 接口头部 */}
+                <div className="flex items-center justify-between p-4 border-b border-white/20 bg-white/5">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className={`px-2 py-1 rounded text-xs font-mono ${
+                      api.method === 'GET' ? 'bg-green-500/80 text-white' : 'bg-orange-500/80 text-white'
+                    }`}>
+                      {api.method}
+                    </span>
+                    <code className="text-white/90 text-sm font-mono">{api.path}</code>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* 打开链接按钮 */}
+                    <a
+                      href={fullUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white/60 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10"
+                      title="打开链接"
                     >
-                      {copiedApi === `example-${api.id}` ? <i className="fas fa-check text-green-400"></i> : <i className="fas fa-copy"></i>}
+                      <i className="fas fa-external-link-alt"></i>
+                    </a>
+                    {/* 复制按钮 */}
+                    <button
+                      onClick={() => handleCopy(fullUrl, api.id)}
+                      className="text-white/60 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10"
+                      title="复制接口地址"
+                    >
+                      {copiedApi === api.id ? <i className="fas fa-check text-green-400"></i> : <i className="fas fa-copy"></i>}
                     </button>
                   </div>
                 </div>
                 
-                <div>
-                  <p className="text-white/50 text-xs mb-1">📤 返回示例</p>
-                  <div className="bg-black/40 rounded-lg p-3 overflow-x-auto">
-                    <pre className="text-white/70 text-xs font-mono whitespace-pre-wrap break-all">{api.response}</pre>
+                {/* 接口内容 */}
+                <div className="p-4 space-y-3">
+                  <p className="text-white/70 text-sm">{api.description}</p>
+                  
+                  <div>
+                    <p className="text-white/50 text-xs mb-1">📝 示例</p>
+                    <div className="bg-black/40 rounded-lg p-3 overflow-x-auto">
+                      <code className="text-white/80 text-xs font-mono break-all">{api.example}</code>
+                      <button
+                        onClick={() => handleCopy(api.example, `example-${api.id}`)}
+                        className="ml-3 text-white/40 hover:text-white/80 transition text-xs"
+                        title="复制示例"
+                      >
+                        {copiedApi === `example-${api.id}` ? <i className="fas fa-check text-green-400"></i> : <i className="fas fa-copy"></i>}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-white/50 text-xs mb-1">📤 返回示例</p>
+                    <div className="bg-black/40 rounded-lg p-3 overflow-x-auto">
+                      <pre className="text-white/70 text-xs font-mono whitespace-pre-wrap break-all">{api.response}</pre>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* 页尾说明 */}
         <div className="text-center mt-8 text-white/40 text-xs">
           <p>所有图片均代理访问，保障私有仓库安全</p>
-          <p className="mt-1">更多信息请访问 <a href="https://github.com/chnbsdan/pcbed" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white">GitHub 仓库</a></p>
+          <p className="mt-1">更多信息请访问 <a href="https://github.com/chnbsdan/pcbed" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white">GitHub chnbsdan</a></p>
         </div>
       </div>
     </div>
