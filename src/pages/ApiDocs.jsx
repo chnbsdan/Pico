@@ -1,0 +1,194 @@
+// src/pages/ApiDocs.jsx - API 接口文档页面
+import React, { useState } from 'react'
+import { copyToClipboard } from '../lib/api'
+import ThemeToggle from '../components/ThemeToggle'
+
+export default function ApiDocs() {
+  const [copiedApi, setCopiedApi] = useState(null)
+
+  const handleCopy = (text, id) => {
+    copyToClipboard(text)
+    setCopiedApi(id)
+    setTimeout(() => setCopiedApi(null), 2000)
+  }
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pcbed.vercel.app'
+
+  const apis = [
+    {
+      id: 'random',
+      name: '随机图片',
+      path: '/api/random',
+      method: 'GET',
+      description: '随机返回一张图片（全部分类）',
+      example: `curl ${baseUrl}/api/random`,
+      response: '直接返回图片文件'
+    },
+    {
+      id: 'wallpaper',
+      name: '横屏图片',
+      path: '/api/wallpaper',
+      method: 'GET',
+      description: '随机返回一张横屏图片',
+      example: `curl ${baseUrl}/api/wallpaper`,
+      response: '直接返回图片文件'
+    },
+    {
+      id: 'cover',
+      name: '竖屏图片',
+      path: '/api/cover',
+      method: 'GET',
+      description: '随机返回一张竖屏图片',
+      example: `curl ${baseUrl}/api/cover`,
+      response: '直接返回图片文件'
+    },
+    {
+      id: 'json',
+      name: 'JSON 格式',
+      path: '/api/json',
+      method: 'GET',
+      description: '返回随机图片的 JSON 信息',
+      example: `curl ${baseUrl}/api/json`,
+      response: `{
+  "code": "200",
+  "imgurl": "${baseUrl}/api/random",
+  "source": "https://raw.githubusercontent.com/chnbsdan/pcbed/main/wallpaper/xxx.jpg",
+  "total": 128
+}`
+    },
+    {
+      id: 'stats',
+      name: '统计信息',
+      path: '/api/stats',
+      method: 'GET',
+      description: '返回图片统计信息',
+      example: `curl ${baseUrl}/api/stats`,
+      response: `{
+  "github_folders": {
+    "wallpaper": 33,
+    "cover": 8
+  },
+  "github_total": 41,
+  "external_total": 15,
+  "grand_total": 56
+}`
+    },
+    {
+      id: 'list',
+      name: '图片列表',
+      path: '/api/list',
+      method: 'GET',
+      description: '返回所有图片列表（按分类分组）',
+      example: `curl ${baseUrl}/api/list`,
+      response: '返回 JSON 格式的图片列表'
+    },
+    {
+      id: 'upload',
+      name: '上传图片',
+      path: '/api/upload',
+      method: 'POST',
+      description: '上传图片到指定分类',
+      example: `curl -X POST -F "file=@image.jpg" -F "folder=wallpaper" ${baseUrl}/api/upload`,
+      response: `{
+  "success": true,
+  "filename": "20260613_image.jpg",
+  "folder": "wallpaper",
+  "url": "${baseUrl}/wallpaper/20260613_image.jpg"
+}`
+    },
+    {
+      id: 'image',
+      name: '代理访问',
+      path: '/api/image',
+      method: 'GET',
+      description: '代理访问私有仓库中的图片',
+      example: `${baseUrl}/api/image?path=wallpaper/20260613_image.jpg`,
+      response: '直接返回图片文件'
+    }
+  ]
+
+  return (
+    <div className="min-h-screen py-6 px-4" style={{ 
+      backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      backgroundAttachment: 'fixed'
+    }}>
+      <ThemeToggle />
+      
+      {/* 返回首页按钮 */}
+      <a 
+        href="/" 
+        className="fixed top-4 left-4 z-50 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition px-3 py-2 rounded-lg text-white text-sm flex items-center gap-2"
+      >
+        <i className="fas fa-arrow-left"></i>
+        返回首页
+      </a>
+
+      <div className="max-w-4xl mx-auto">
+        {/* 头部 */}
+        <div className="text-center mb-8">
+          <i className="fas fa-book text-5xl text-white/70 mb-3"></i>
+          <h1 className="text-3xl font-bold text-white mb-2">API 接口文档</h1>
+          <p className="text-white/60">所有接口均支持 GET 请求（上传除外）</p>
+        </div>
+
+        {/* API 列表 */}
+        <div className="space-y-4">
+          {apis.map((api) => (
+            <div key={api.id} className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+              {/* 接口头部 */}
+              <div className="flex items-center justify-between p-4 border-b border-white/20 bg-white/5">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`px-2 py-1 rounded text-xs font-mono ${
+                    api.method === 'GET' ? 'bg-green-500/80 text-white' : 'bg-orange-500/80 text-white'
+                  }`}>
+                    {api.method}
+                  </span>
+                  <code className="text-white/90 text-sm font-mono">{api.path}</code>
+                </div>
+                <button
+                  onClick={() => handleCopy(`${baseUrl}${api.path}`, api.id)}
+                  className="text-white/60 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10"
+                  title="复制接口地址"
+                >
+                  {copiedApi === api.id ? <i className="fas fa-check text-green-400"></i> : <i className="fas fa-copy"></i>}
+                </button>
+              </div>
+              
+              {/* 接口内容 */}
+              <div className="p-4 space-y-3">
+                <p className="text-white/70 text-sm">{api.description}</p>
+                
+                <div>
+                  <p className="text-white/50 text-xs mb-1">📝 示例</p>
+                  <div className="bg-black/40 rounded-lg p-3 overflow-x-auto">
+                    <code className="text-white/80 text-xs font-mono break-all">{api.example}</code>
+                    <button
+                      onClick={() => handleCopy(api.example, `example-${api.id}`)}
+                      className="ml-3 text-white/40 hover:text-white/80 transition text-xs"
+                      title="复制示例"
+                    >
+                      {copiedApi === `example-${api.id}` ? <i className="fas fa-check text-green-400"></i> : <i className="fas fa-copy"></i>}
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="text-white/50 text-xs mb-1">📤 返回示例</p>
+                  <div className="bg-black/40 rounded-lg p-3 overflow-x-auto">
+                    <pre className="text-white/70 text-xs font-mono whitespace-pre-wrap break-all">{api.response}</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 页尾说明 */}
+        <div className="text-center mt-8 text-white/40 text-xs">
+          <p>所有图片均代理访问，保障私有仓库安全</p>
+          <p className="mt-1">更多信息请访问 <a href="https://github.com/chnbsdan/pcbed" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white">GitHub 仓库</a></p>
+        </div>
+      </div>
+    </div>
+  )
+}
