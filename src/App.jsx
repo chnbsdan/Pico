@@ -119,81 +119,84 @@ function App() {
     return new Blob([u8arr], { type: 'image/jpeg' })
   }
 
-  const handleUpload = async (files, folder) => {
-    setIsUploading(true)
-    setUploadResults([])
-    setUploadKey(prev => prev + 1) // 强制刷新结果区域
+ const handleUpload = async (files, folder) => {
+  setIsUploading(true)
+  setUploadResults([])
+  setUploadKey(prev => prev + 1)
+  
+  const fileArray = Array.from(files)
+  const resultsRef = { current: [] }  // 用 ref 存储累积结果
+  
+  for (let i = 0; i < fileArray.length; i++) {
+    let file = fileArray[i]
+    const ext = file.name.split('.').pop().toLowerCase()
     
-    const fileArray = Array.from(files)
-    
-    for (let i = 0; i < fileArray.length; i++) {
-      let file = fileArray[i]
-      const ext = file.name.split('.').pop().toLowerCase()
-      
-      if (!['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'].includes(ext)) {
-        setUploadResults(prev => [...prev, { 
-          success: false, 
-          filename: file.name, 
-          error: '格式不支持', 
-          folder 
-        }])
-        continue
-      }
-      
-      if (convertToWebp && !['gif', 'avif'].includes(ext)) {
-        try {
-          file = await convertToWebP(file)
-          console.log(`✅ 已转换 ${file.name} 为 WebP`)
-        } catch (err) {
-          console.error('WebP 转换失败:', err)
-        }
-      }
-      
-      if (file.size > 3 * 1024 * 1024 && file.type !== 'image/webp') {
-        try {
-          file = await compressImage(file)
-        } catch (e) {}
-      }
-      
-      let retry = 3
-      let uploaded = false
-      
-      while (retry > 0 && !uploaded) {
-        try {
-          const data = await uploadImage(file, folder)
-          if (data.success) {
-            setUploadResults(prev => [...prev, { 
-              success: true, 
-              filename: data.filename, 
-              url: data.url, 
-              folder 
-            }])
-            uploaded = true
-          } else {
-            throw new Error(data.error || '上传失败')
-          }
-        } catch (err) {
-          retry--
-          if (retry === 0) {
-            setUploadResults(prev => [...prev, { 
-              success: false, 
-              filename: file.name, 
-              error: err.message, 
-              folder 
-            }])
-          } else {
-            await new Promise(r => setTimeout(r, 1000))
-          }
-        }
-      }
-      
-      if (i < fileArray.length - 1) await new Promise(r => setTimeout(r, 500))
+    if (!['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'].includes(ext)) {
+      resultsRef.current.push({ 
+        success: false, 
+        filename: file.name, 
+        error: '格式不支持', 
+        folder 
+      })
+      setUploadResults([...resultsRef.current])
+      continue
     }
     
-    setIsUploading(false)
-    loadStats()
+    if (convertToWebp && !['gif', 'avif'].includes(ext)) {
+      try {
+        file = await convertToWebP(file)
+        console.log(`✅ 已转换 ${file.name} 为 WebP`)
+      } catch (err) {
+        console.error('WebP 转换失败:', err)
+      }
+    }
+    
+    if (file.size > 3 * 1024 * 1024 && file.type !== 'image/webp') {
+      try {
+        file = await compressImage(file)
+      } catch (e) {}
+    }
+    
+    let retry = 3
+    let uploaded = false
+    
+    while (retry > 0 && !uploaded) {
+      try {
+        const data = await uploadImage(file, folder)
+        if (data.success) {
+          resultsRef.current.push({ 
+            success: true, 
+            filename: data.filename, 
+            url: data.url, 
+            folder 
+          })
+          setUploadResults([...resultsRef.current])
+          uploaded = true
+        } else {
+          throw new Error(data.error || '上传失败')
+        }
+      } catch (err) {
+        retry--
+        if (retry === 0) {
+          resultsRef.current.push({ 
+            success: false, 
+            filename: file.name, 
+            error: err.message, 
+            folder 
+          })
+          setUploadResults([...resultsRef.current])
+        } else {
+          await new Promise(r => setTimeout(r, 1000))
+        }
+      }
+    }
+    
+    if (i < fileArray.length - 1) await new Promise(r => setTimeout(r, 500))
   }
-
+  
+  setIsUploading(false)
+  loadStats()
+}
   return (
     <div className="min-h-screen py-6 px-4 relative">
       <a 
