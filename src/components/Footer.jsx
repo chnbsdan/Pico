@@ -50,17 +50,18 @@ export default function Footer() {
         <a href="https://github.com/chnbsdan" target="_blank" rel="noopener noreferrer" className="text-white/80 dark:text-white/70 hover:text-white transition ml-1">GitHub</a>
       </p>
       
-      <p className="mt-2">
-        <a href="/manage" className="text-white/60 dark:text-white/40 hover:text-white transition text-xs flex items-center justify-center gap-1">
+      {/* 管理入口和 API 文档入口 - 并排显示 */}
+      <div className="mt-2 flex items-center justify-center gap-3">
+        <a href="/manage" className="text-white/60 dark:text-white/40 hover:text-white transition text-xs flex items-center gap-1">
           <i className="fas fa-cog"></i>
           管理登录
         </a>
         <span className="text-white/30">|</span>
-  <a href="/docs" className="text-white/60 hover:text-white transition text-xs flex items-center gap-1">
-    <i className="fas fa-book"></i>
-    API 文档
-  </a>
-      </p>
+        <a href="/docs" className="text-white/60 dark:text-white/40 hover:text-white transition text-xs flex items-center gap-1">
+          <i className="fas fa-book"></i>
+          API 文档
+        </a>
+      </div>
       
       <p className="mt-2 text-white/60 dark:text-white/40 text-xs flex items-center justify-center gap-1 flex-wrap">
         本站已稳定运行
