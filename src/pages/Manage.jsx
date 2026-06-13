@@ -1,6 +1,6 @@
-// src/pages/Manage.jsx - 图片管理页面（完整移动端适配版）
+// src/pages/Manage.jsx - 图片管理页面（完整版，含批量复制）
 import React, { useState, useEffect } from 'react'
-import { fetchImageList, copyToClipboard } from '../lib/api'
+import { fetchImageList, copyToClipboard, batchCopyLinks } from '../lib/api'
 
 export default function Manage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -13,11 +13,15 @@ export default function Manage() {
   const [copiedId, setCopiedId] = useState(null)
   
   const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 64  // 每页 8行 x 8列 = 64 张
+  const pageSize = 64
   
   const [previewImage, setPreviewImage] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // 批量选择状态
+  const [selectedImages, setSelectedImages] = useState(new Set())
+  const [showBatchMenu, setShowBatchMenu] = useState(false)
 
   const getProxyUrl = (img) => {
     if (img.source === 'external') {
@@ -27,18 +31,17 @@ export default function Manage() {
     return `${baseUrl}/api/image?path=${img.folder}/${img.name}`
   }
 
-  // 根据文件夹获取比例
   const getImageAspect = (img) => {
     if (img.folder === 'wallpaper') {
-      return 'aspect-video'  // 16:9
+      return 'aspect-video'
     } else {
-      return 'aspect-9/16'   // 9:16
+      return 'aspect-9/16'
     }
   }
 
   const handleLogin = (e) => {
     e.preventDefault()
-    if (password === 'admin123') {
+    if (password === 'your-password') {
       setIsAuthenticated(true)
       setPasswordError(false)
       loadImages()
@@ -92,6 +95,7 @@ export default function Manage() {
       
       if (result.success) {
         await loadImages()
+        setSelectedImages(new Set()) // 清空选择
         alert(`✅ 已删除 "${img.name}"`)
       } else {
         alert(`❌ 删除失败: ${result.error || '未知错误'}`)
@@ -107,7 +111,43 @@ export default function Manage() {
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     setCurrentPage(1)
-    setMobileMenuOpen(false) // 移动端切换后关闭菜单
+    setSelectedImages(new Set()) // 切换分类时清空选择
+    setMobileMenuOpen(false)
+  }
+
+  // 批量选择函数
+  const toggleSelect = (imgName, e) => {
+    if (e) e.stopPropagation()
+    const newSelected = new Set(selectedImages)
+    if (newSelected.has(imgName)) {
+      newSelected.delete(imgName)
+    } else {
+      newSelected.add(imgName)
+    }
+    setSelectedImages(newSelected)
+  }
+
+  const selectAll = () => {
+    if (selectedImages.size === paginatedImages.length) {
+      setSelectedImages(new Set())
+    } else {
+      const allNames = new Set(paginatedImages.map(img => img.name))
+      setSelectedImages(allNames)
+    }
+  }
+
+  const handleBatchCopy = async (format) => {
+    const selectedUrls = paginatedImages
+      .filter(img => selectedImages.has(img.name))
+      .map(img => getProxyUrl(img))
+    
+    if (selectedUrls.length === 0) {
+      alert('请先选择图片')
+      return
+    }
+    
+    await batchCopyLinks(selectedUrls, format)
+    setShowBatchMenu(false)
   }
 
   const currentImages = images[activeTab] || []
@@ -171,7 +211,7 @@ export default function Manage() {
       backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       backgroundAttachment: 'fixed'
     }}>
-      {/* ========= 移动端菜单按钮 ========= */}
+      {/* 移动端菜单按钮 */}
       <button
         onClick={() => setMobileMenuOpen(true)}
         className="fixed top-4 left-4 z-50 lg:hidden bg-white/20 backdrop-blur-sm p-2.5 rounded-lg text-white shadow-lg"
@@ -179,8 +219,7 @@ export default function Manage() {
         <i className="fas fa-bars text-lg"></i>
       </button>
 
-      {/* ========= 左侧悬浮目录 ========= */}
-      {/* 移动端遮罩层 */}
+      {/* 左侧悬浮目录 */}
       {mobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -188,7 +227,6 @@ export default function Manage() {
         />
       )}
       
-      {/* 目录侧边栏 */}
       <div className={`
         fixed top-0 left-0 h-full z-50 w-72 bg-black/90 backdrop-blur-md shadow-xl transition-transform duration-300 ease-in-out
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -199,7 +237,6 @@ export default function Manage() {
             <i className="fas fa-folder-tree"></i>
             <span>图片库</span>
           </div>
-          {/* 移动端关闭按钮 */}
           <button
             onClick={() => setMobileMenuOpen(false)}
             className="lg:hidden text-white/70 hover:text-white text-xl"
@@ -262,9 +299,9 @@ export default function Manage() {
         </div>
       </div>
 
-      {/* ========= 右侧内容区 ========= */}
+      {/* 右侧内容区 */}
       <div className="lg:pl-72">
-        {/* 标题栏 - 移动端适配 */}
+        {/* 标题栏 */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -276,7 +313,6 @@ export default function Manage() {
                 共 {totalCount} 张图片 · 第 {currentPage}/{totalPages || 1} 页
               </p>
             </div>
-            {/* 分页控件 - 移动端简化 */}
             {totalPages > 1 && (
               <div className="flex gap-1">
                 <button
@@ -301,7 +337,55 @@ export default function Manage() {
           </div>
         </div>
 
-        {/* 图片网格 - 响应式列数 */}
+        {/* 批量操作栏 */}
+        {selectedImages.size > 0 && (
+          <div className="bg-blue-600/30 backdrop-blur-sm rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-white text-sm flex items-center gap-2">
+              <i className="fas fa-check-circle"></i>
+              已选择 {selectedImages.size} 张图片
+              <button
+                onClick={selectAll}
+                className="text-xs text-white/70 hover:text-white underline ml-2"
+              >
+                {selectedImages.size === paginatedImages.length ? '取消全选' : '全选'}
+              </button>
+            </span>
+            <div className="relative">
+              <button
+                onClick={() => setShowBatchMenu(!showBatchMenu)}
+                className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm flex items-center gap-2 transition"
+              >
+                <i className="fas fa-copy"></i>
+                批量复制
+                <i className="fas fa-chevron-down text-xs"></i>
+              </button>
+              {showBatchMenu && (
+                <div className="absolute right-0 mt-2 w-44 bg-gray-800 rounded-lg shadow-lg overflow-hidden z-20 border border-gray-700">
+                  <button
+                    onClick={() => handleBatchCopy('url')}
+                    className="w-full px-4 py-2 text-left text-white hover:bg-gray-700 text-sm flex items-center gap-2 transition"
+                  >
+                    <i className="fas fa-link"></i> 复制链接 (URL)
+                  </button>
+                  <button
+                    onClick={() => handleBatchCopy('markdown')}
+                    className="w-full px-4 py-2 text-left text-white hover:bg-gray-700 text-sm flex items-center gap-2 transition"
+                  >
+                    <i className="fab fa-markdown"></i> 复制 Markdown
+                  </button>
+                  <button
+                    onClick={() => handleBatchCopy('html')}
+                    className="w-full px-4 py-2 text-left text-white hover:bg-gray-700 text-sm flex items-center gap-2 transition"
+                  >
+                    <i className="fab fa-html5"></i> 复制 HTML
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 图片网格 */}
         {loading ? (
           <div className="flex justify-center items-center py-20 bg-white/5 rounded-xl">
             <i className="fas fa-spinner fa-pulse text-3xl text-white/50"></i>
@@ -324,8 +408,17 @@ export default function Manage() {
                 return (
                   <div
                     key={img.sha || idx}
-                    className="group bg-white/10 backdrop-blur-sm rounded-lg overflow-hidden border border-white/20 hover:border-white/40 transition-all hover:scale-105 hover:shadow-lg"
+                    className="group bg-white/10 backdrop-blur-sm rounded-lg overflow-hidden border border-white/20 hover:border-white/40 transition-all hover:scale-105 hover:shadow-lg relative"
                   >
+                    {/* 复选框 */}
+                    <input
+                      type="checkbox"
+                      checked={selectedImages.has(img.name)}
+                      onChange={(e) => toggleSelect(img.name, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-1 left-1 z-10 w-3.5 h-3.5 rounded border-white/30 bg-black/50 checked:bg-blue-500 cursor-pointer"
+                    />
+                    
                     <div 
                       className={`${aspectClass} bg-black/30 overflow-hidden cursor-pointer relative`}
                       onClick={() => setPreviewImage(img)}
