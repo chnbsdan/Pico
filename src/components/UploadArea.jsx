@@ -19,11 +19,25 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
     img.src = url
   }
 
-  // 直接传递所有文件给父组件
-  const handleFiles = (files) => {
+  // 直接传递所有文件给父组件，并显示进度
+  const handleFiles = async (files) => {
     if (!files || files.length === 0) return
     console.log('UploadArea 收到文件数量:', files.length)
-    onUpload(files, folder)
+    
+    // 显示进度条
+    const fileArray = Array.from(files)
+    let completed = 0
+    setUploadProgress({ current: 0, total: fileArray.length })
+    
+    // 逐张上传，更新进度
+    for (let i = 0; i < fileArray.length; i++) {
+      await onUpload([fileArray[i]], folder)
+      completed++
+      setUploadProgress({ current: completed, total: fileArray.length })
+    }
+    
+    // 2秒后隐藏进度条
+    setTimeout(() => setUploadProgress(null), 2000)
   }
 
   const handleFileSelect = (e) => {
@@ -124,7 +138,10 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
 
       {/* WebP 转换复选框 */}
       <div className="flex justify-center items-center mb-4">
-        <label className="flex items-center gap-2 cursor-pointer group">
+        <label 
+          className="flex items-center gap-2 cursor-pointer group"
+          onClick={(e) => e.stopPropagation()}
+        >
           <input
             type="checkbox"
             checked={convertToWebp || false}
@@ -171,32 +188,32 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
         )}
         
         {/* 压缩质量选择 */}
-<div 
-  className="flex justify-center items-center mt-3"
-  onClick={(e) => e.stopPropagation()}
->
-  <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-    <span className="text-gray-700 dark:text-white/70 text-sm">
-      <i className="fas fa-compress-alt mr-1"></i>
-      压缩质量：
-    </span>
-    <select
-      id="compressQuality"
-      defaultValue="85"
-      onChange={(e) => {
-        const quality = parseInt(e.target.value)
-        localStorage.setItem('compressQuality', quality)
-      }}
-      className="bg-white text-gray-800 dark:bg-white/20 dark:text-white text-sm rounded-lg px-3 py-1.5 border border-gray-300 dark:border-white/30 
-                 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer
-                 hover:bg-gray-100 dark:hover:bg-white/30 transition"
-    >
-      <option value="70" className="text-gray-800 dark:text-gray-800">📦 高压缩 (70%) - 体积更小</option>
-      <option value="85" className="text-gray-800 dark:text-gray-800">⚖️ 推荐 (85%) - 平衡</option>
-      <option value="100" className="text-gray-800 dark:text-gray-800">✨ 最佳质量 (100%) - 文件较大</option>
-    </select>
-  </div>
-</div>
+        <div 
+          className="flex justify-center items-center mt-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+            <span className="text-gray-700 dark:text-white/70 text-sm">
+              <i className="fas fa-compress-alt mr-1"></i>
+              压缩质量：
+            </span>
+            <select
+              id="compressQuality"
+              defaultValue="85"
+              onChange={(e) => {
+                const quality = parseInt(e.target.value)
+                localStorage.setItem('compressQuality', quality)
+              }}
+              className="bg-white text-gray-800 dark:bg-white/20 dark:text-white text-sm rounded-lg px-3 py-1.5 border border-gray-300 dark:border-white/30 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer
+                         hover:bg-gray-100 dark:hover:bg-white/30 transition"
+            >
+              <option value="70" className="text-gray-800 dark:text-gray-800">📦 高压缩 (70%) - 体积更小</option>
+              <option value="85" className="text-gray-800 dark:text-gray-800">⚖️ 推荐 (85%) - 平衡</option>
+              <option value="100" className="text-gray-800 dark:text-gray-800">✨ 最佳质量 (100%) - 文件较大</option>
+            </select>
+          </div>
+        </div>
         
         <p className="text-xs text-blue-500 mt-3">
           当前上传到: {folder === 'wallpaper' ? '📁 横屏 (wallpaper)' : '📁 竖屏 (cover)'}
