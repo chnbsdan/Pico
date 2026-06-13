@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Header from './components/Header'
 import StatsCard from './components/StatsCard'
 import ApiSection from './components/ApiSection'
@@ -13,6 +13,9 @@ function App() {
   const [uploadResults, setUploadResults] = useState([])
   const [isUploading, setIsUploading] = useState(false)
   const [convertToWebp, setConvertToWebp] = useState(false)
+  
+  // 使用 ref 来存储累积的结果，避免闭包问题
+  const resultsRef = useRef([])
 
   const isManagePage = typeof window !== 'undefined' && window.location.pathname === '/manage'
   
@@ -120,24 +123,24 @@ function App() {
 
   const handleUpload = async (files, folder) => {
     setIsUploading(true)
+    // 清空 ref 和 state
+    resultsRef.current = []
     setUploadResults([])
     
     const fileArray = Array.from(files)
-    const tempResults = []
     
     for (let i = 0; i < fileArray.length; i++) {
       let file = fileArray[i]
       const ext = file.name.split('.').pop().toLowerCase()
       
       if (!['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'].includes(ext)) {
-        tempResults.push({ 
+        resultsRef.current.push({ 
           success: false, 
           filename: file.name, 
           error: '格式不支持', 
           folder 
         })
-        // 每处理完一张就更新一次 UI
-        setUploadResults([...tempResults])
+        setUploadResults([...resultsRef.current])
         continue
       }
       
@@ -163,14 +166,14 @@ function App() {
         try {
           const data = await uploadImage(file, folder)
           if (data.success) {
-            tempResults.push({ 
+            resultsRef.current.push({ 
               success: true, 
               filename: data.filename, 
               url: data.url, 
               folder 
             })
-            // 每成功上传一张就更新一次 UI
-            setUploadResults([...tempResults])
+            console.log('当前结果数量:', resultsRef.current.length)
+            setUploadResults([...resultsRef.current])
             uploaded = true
           } else {
             throw new Error(data.error || '上传失败')
@@ -178,13 +181,13 @@ function App() {
         } catch (err) {
           retry--
           if (retry === 0) {
-            tempResults.push({ 
+            resultsRef.current.push({ 
               success: false, 
               filename: file.name, 
               error: err.message, 
               folder 
             })
-            setUploadResults([...tempResults])
+            setUploadResults([...resultsRef.current])
           } else {
             await new Promise(r => setTimeout(r, 1000))
           }
