@@ -19,22 +19,20 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
     img.src = url
   }
 
-  const handleUploadWithProgress = async (files, selectedFolder) => {
-    const fileArray = Array.from(files)
-    let completed = 0
-    
-    for (let i = 0; i < fileArray.length; i++) {
-      await onUpload([fileArray[i]], selectedFolder)
-      completed++
-      setUploadProgress({ current: completed, total: fileArray.length })
-    }
-    
-    setTimeout(() => setUploadProgress(null), 2000)
+  // 直接传递所有文件给父组件
+  const handleFiles = (files) => {
+    if (!files || files.length === 0) return
+    console.log('UploadArea 收到文件数量:', files.length)
+    onUpload(files, folder)
   }
 
-  const handleFileSelect = (files) => {
-    if (files.length > 0) {
-      handleUploadWithProgress(files, folder)
+  const handleFileSelect = (e) => {
+    const files = e.target.files
+    console.log('选择文件数量:', files.length)
+    handleFiles(files)
+    // 清空 input 的值，以便再次选择相同文件时能触发 onChange
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -42,11 +40,11 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
     e.preventDefault()
     setDragOver(false)
     const files = e.dataTransfer.files
-    if (files.length > 0) {
-      handleUploadWithProgress(files, folder)
-    }
+    console.log('拖拽文件数量:', files.length)
+    handleFiles(files)
   }
 
+  // 粘贴上传
   useEffect(() => {
     const handlePaste = (e) => {
       const items = e.clipboardData?.items
@@ -65,7 +63,7 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
       
       if (imageFiles.length > 0) {
         e.preventDefault()
-        handleUploadWithProgress(imageFiles, folder)
+        handleFiles(imageFiles)
         
         const toast = document.createElement('div')
         toast.innerHTML = '<i class="fas fa-paste mr-1"></i> 检测到粘贴的图片，开始上传'
@@ -172,30 +170,30 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
           </p>
         )}
         
-       {/* 压缩质量选择 */}
-<div className="flex justify-center items-center mt-3">
-  <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-    <span className="text-gray-700 dark:text-white/70 text-sm">
-      <i className="fas fa-compress-alt mr-1"></i>
-      压缩质量：
-    </span>
-    <select
-      id="compressQuality"
-      defaultValue="85"
-      onChange={(e) => {
-        const quality = parseInt(e.target.value)
-        localStorage.setItem('compressQuality', quality)
-      }}
-      className="bg-white text-gray-800 dark:bg-white/20 dark:text-white text-sm rounded-lg px-3 py-1.5 border border-gray-300 dark:border-white/30 
-                 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer
-                 hover:bg-gray-100 dark:hover:bg-white/30 transition"
-    >
-      <option value="70" className="text-gray-800 dark:text-gray-800">📦 高压缩 (70%) - 体积更小</option>
-      <option value="85" className="text-gray-800 dark:text-gray-800">⚖️ 推荐 (85%) - 平衡</option>
-      <option value="100" className="text-gray-800 dark:text-gray-800">✨ 最佳质量 (100%) - 文件较大</option>
-    </select>
-  </div>
-</div>
+        {/* 压缩质量选择 */}
+        <div className="flex justify-center items-center mt-3">
+          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+            <span className="text-gray-700 dark:text-white/70 text-sm">
+              <i className="fas fa-compress-alt mr-1"></i>
+              压缩质量：
+            </span>
+            <select
+              id="compressQuality"
+              defaultValue="85"
+              onChange={(e) => {
+                const quality = parseInt(e.target.value)
+                localStorage.setItem('compressQuality', quality)
+              }}
+              className="bg-white text-gray-800 dark:bg-white/20 dark:text-white text-sm rounded-lg px-3 py-1.5 border border-gray-300 dark:border-white/30 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer
+                         hover:bg-gray-100 dark:hover:bg-white/30 transition"
+            >
+              <option value="70" className="text-gray-800 dark:text-gray-800">📦 高压缩 (70%) - 体积更小</option>
+              <option value="85" className="text-gray-800 dark:text-gray-800">⚖️ 推荐 (85%) - 平衡</option>
+              <option value="100" className="text-gray-800 dark:text-gray-800">✨ 最佳质量 (100%) - 文件较大</option>
+            </select>
+          </div>
+        </div>
         
         <p className="text-xs text-blue-500 mt-3">
           当前上传到: {folder === 'wallpaper' ? '📁 横屏 (wallpaper)' : '📁 竖屏 (cover)'}
@@ -208,7 +206,7 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
         accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
         multiple
         className="hidden"
-        onChange={(e) => handleFileSelect(e.target.files)}
+        onChange={handleFileSelect}
       />
 
       {uploadProgress && (
