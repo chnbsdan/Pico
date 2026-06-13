@@ -123,69 +123,90 @@ function App() {
   }
 
   const handleUpload = async (files, folder) => {
-    setIsUploading(true)
-    setUploadResults([])
+  setIsUploading(true)
+  setUploadResults([])
+  
+  const fileArray = Array.from(files)
+  const totalFiles = fileArray.length
+  let completedCount = 0
+  
+  for (let i = 0; i < fileArray.length; i++) {
+    let file = fileArray[i]
+    const ext = file.name.split('.').pop().toLowerCase()
     
-    const results = []
-    const fileArray = Array.from(files)
-    
-    for (let i = 0; i < fileArray.length; i++) {
-      let file = fileArray[i]
-      const ext = file.name.split('.').pop().toLowerCase()
-      
-      if (!['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'].includes(ext)) {
-        results.push({ success: false, filename: file.name, error: '格式不支持', folder })
-        continue
-      }
-      
-      // 如果用户选择了转换为 WebP，且不是 gif/avif
-      if (convertToWebp && !['gif', 'avif'].includes(ext)) {
-        try {
-          file = await convertToWebP(file)
-          console.log(`✅ 已转换 ${file.name} 为 WebP`)
-        } catch (err) {
-          console.error('WebP 转换失败:', err)
-        }
-      }
-      
-      // 大图压缩（WebP 不再重复压缩）
-      if (file.size > 3 * 1024 * 1024 && file.type !== 'image/webp') {
-        try {
-          file = await compressImage(file)
-        } catch (e) {
-          // 压缩失败，继续使用原图
-        }
-      }
-      
-      let retry = 3
-      let uploaded = false
-      
-      while (retry > 0 && !uploaded) {
-        try {
-          const data = await uploadImage(file, folder)
-          if (data.success) {
-            results.push({ success: true, filename: data.filename, url: data.url, folder })
-            uploaded = true
-          } else {
-            throw new Error(data.error || '上传失败')
-          }
-        } catch (err) {
-          retry--
-          if (retry === 0) {
-            results.push({ success: false, filename: file.name, error: err.message, folder })
-          } else {
-            await new Promise(r => setTimeout(r, 1000))
-          }
-        }
-      }
-      
-      setUploadResults([...results])
-      if (i < fileArray.length - 1) await new Promise(r => setTimeout(r, 500))
+    if (!['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'].includes(ext)) {
+      // 格式不支持，立即添加失败结果
+      setUploadResults(prev => [...prev, { 
+        success: false, 
+        filename: file.name, 
+        error: '格式不支持', 
+        folder 
+      }])
+      completedCount++
+      continue
     }
     
-    setIsUploading(false)
-    loadStats()
+    // 如果用户选择了转换为 WebP，且不是 gif/avif
+    if (convertToWebp && !['gif', 'avif'].includes(ext)) {
+      try {
+        file = await convertToWebP(file)
+        console.log(`✅ 已转换 ${file.name} 为 WebP`)
+      } catch (err) {
+        console.error('WebP 转换失败:', err)
+      }
+    }
+    
+    // 大图压缩（WebP 不再重复压缩）
+    if (file.size > 3 * 1024 * 1024 && file.type !== 'image/webp') {
+      try {
+        file = await compressImage(file)
+      } catch (e) {
+        // 压缩失败，继续使用原图
+      }
+    }
+    
+    let retry = 3
+    let uploaded = false
+    
+    while (retry > 0 && !uploaded) {
+      try {
+        const data = await uploadImage(file, folder)
+        if (data.success) {
+          // 成功，立即添加结果
+          setUploadResults(prev => [...prev, { 
+            success: true, 
+            filename: data.filename, 
+            url: data.url, 
+            folder 
+          }])
+          uploaded = true
+        } else {
+          throw new Error(data.error || '上传失败')
+        }
+      } catch (err) {
+        retry--
+        if (retry === 0) {
+          // 失败，立即添加结果
+          setUploadResults(prev => [...prev, { 
+            success: false, 
+            filename: file.name, 
+            error: err.message, 
+            folder 
+          }])
+        } else {
+          await new Promise(r => setTimeout(r, 1000))
+        }
+      }
+    }
+    
+    completedCount++
+    
+    if (i < fileArray.length - 1) await new Promise(r => setTimeout(r, 500))
   }
+  
+  setIsUploading(false)
+  loadStats()
+}
 
   return (
     <div className="min-h-screen py-6 px-4 relative">
