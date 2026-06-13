@@ -166,8 +166,8 @@ export default function Manage() {
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 sm:p-8 w-full max-w-md border border-white/30">
           <div className="text-center mb-6">
             <i className="fas fa-lock text-5xl text-white/70 mb-3"></i>
-            <h2 className="text-2xl font-bold text-white">管理后台</h2>
-            <p className="text-white/50 text-sm mt-1">请输入密码进入</p>
+            <h2 className="text-2xl font-bold text-white">管理员登录</h2>
+            <p className="text-white/50 text-sm mt-1">请输入管理员密码以访问图床</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-4">
@@ -175,7 +175,7 @@ export default function Manage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="请输入管理密码"
+              placeholder="请输入管理员密码"
               className="w-full px-4 py-2 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
@@ -190,7 +190,7 @@ export default function Manage() {
               className="w-full py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium transition flex items-center justify-center gap-2"
             >
               <i className="fas fa-sign-in-alt"></i>
-              进入管理
+              验证进入
             </button>
           </form>
           
