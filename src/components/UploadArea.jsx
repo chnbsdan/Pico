@@ -1,19 +1,19 @@
-import React, { useRef, useState } from 'react'
+// src/components/UploadArea.jsx - 添加粘贴上传和上传进度
+import React, { useRef, useState, useEffect } from 'react'
 
 export default function UploadArea({ onUpload, isLoading, convertToWebp, onConvertChange }) {
   const [dragOver, setDragOver] = useState(false)
   const [folder, setFolder] = useState('wallpaper')
-  const [bgRefresh, setBgRefresh] = useState(false)  // 换背景按钮状态
+  const [bgRefresh, setBgRefresh] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(null) // 上传进度
   const fileInputRef = useRef(null)
 
   // 换背景：只从横屏图片中获取
   const refreshBackground = () => {
-    // 添加点击动画效果
     setBgRefresh(true)
     setTimeout(() => setBgRefresh(false), 200)
     
     const img = new Image()
-    // 时间戳 + 随机数，双重防缓存
     const url = '/api/wallpaper?t=' + Date.now() + '&r=' + Math.random()
     img.onload = () => {
       document.body.style.backgroundImage = `url(${url})`
@@ -21,9 +21,23 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
     img.src = url
   }
 
+  // 处理上传（带进度回调）
+  const handleUploadWithProgress = async (files, selectedFolder) => {
+    const fileArray = Array.from(files)
+    let completed = 0
+    
+    for (let i = 0; i < fileArray.length; i++) {
+      await onUpload([fileArray[i]], selectedFolder)
+      completed++
+      setUploadProgress({ current: completed, total: fileArray.length })
+    }
+    
+    setTimeout(() => setUploadProgress(null), 2000)
+  }
+
   const handleFileSelect = (files) => {
     if (files.length > 0) {
-      onUpload(files, folder)
+      handleUploadWithProgress(files, folder)
     }
   }
 
@@ -32,9 +46,43 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
     setDragOver(false)
     const files = e.dataTransfer.files
     if (files.length > 0) {
-      onUpload(files, folder)
+      handleUploadWithProgress(files, folder)
     }
   }
+
+  // 🆕 粘贴上传
+  useEffect(() => {
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      
+      const imageFiles = []
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile()
+          if (file) {
+            imageFiles.push(file)
+          }
+        }
+      }
+      
+      if (imageFiles.length > 0) {
+        e.preventDefault()
+        handleUploadWithProgress(imageFiles, folder)
+        
+        // 显示提示
+        const toast = document.createElement('div')
+        toast.innerHTML = '<i class="fas fa-paste mr-1"></i> 检测到粘贴的图片，开始上传'
+        toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg animate-fade-in-up'
+        document.body.appendChild(toast)
+        setTimeout(() => toast.remove(), 2000)
+      }
+    }
+    
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [folder])
 
   return (
     <div className="mb-4">
@@ -44,7 +92,6 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
           上传图片
         </h3>
         <div className="flex items-center gap-2">
-          {/* 换背景按钮 - 有点击状态变化 */}
           <button
             onClick={refreshBackground}
             className={`text-xs transition flex items-center gap-1 px-2 py-1 rounded-lg ${
@@ -57,7 +104,6 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
             <i className="fas fa-sync-alt text-xs"></i>
             换背景
           </button>
-          {/* 横屏按钮 */}
           <button
             onClick={() => setFolder('wallpaper')}
             className={`px-3 py-1 rounded-lg text-xs flex items-center gap-1 transition-all ${
@@ -69,7 +115,6 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
             <i className="fas fa-arrows-alt text-xs"></i>
             横屏
           </button>
-          {/* 竖屏按钮 */}
           <button
             onClick={() => setFolder('cover')}
             className={`px-3 py-1 rounded-lg text-xs flex items-center gap-1 transition-all ${
@@ -121,8 +166,10 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
         <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3 block"></i>
         <p className="text-gray-600 text-base mb-2">点击或拖拽图片到此处上传</p>
         <p className="text-xs text-gray-400">支持 JPG、PNG、WebP、GIF、AVIF | 大图自动压缩</p>
+        <p className="text-xs text-gray-400 mt-1">
+          <i className="fas fa-paste mr-1"></i>也可直接 Ctrl+V 粘贴截图上传
+        </p>
         
-        {/* 显示当前转换状态 */}
         {convertToWebp && (
           <p className="text-xs text-green-600 mt-2">
             <i className="fas fa-exchange-alt mr-1"></i>
@@ -131,8 +178,7 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
         )}
         
         <p className="text-xs text-blue-500 mt-3">
-        <i className="fas fa-folder-open mr-1"></i>
-             当前上传到: {folder === 'wallpaper' ? '横屏 (wallpaper)' : '竖屏 (cover)'}
+          当前上传到: {folder === 'wallpaper' ? '📁 横屏 (wallpaper)' : '📁 竖屏 (cover)'}
         </p>
       </div>
 
@@ -145,10 +191,26 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
         onChange={(e) => handleFileSelect(e.target.files)}
       />
 
-      {isLoading && (
+      {/* 上传进度条 */}
+      {uploadProgress && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-sm text-white/70 mb-1">
+            <span><i className="fas fa-spinner fa-pulse mr-1"></i>上传中...</span>
+            <span>{uploadProgress.current} / {uploadProgress.total}</span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
+      {isLoading && !uploadProgress && (
         <div className="mt-3 text-center">
-          <div className="inline-flex items-center gap-2 text-sm text-gray-200">
-            <div className="w-3 h-3 border-2 border-gray-200 border-t-transparent rounded-full animate-spin" />
+          <div className="inline-flex items-center gap-2 text-sm text-orange-600">
+            <div className="w-3 h-3 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
             上传中，请稍候...
           </div>
         </div>
