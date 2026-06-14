@@ -241,19 +241,19 @@ export default function Manage() {
               </p>
             )}
             <button
-              type="submit"
-              className="w-full py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium transition flex items-center justify-center gap-2"
-            >
-              <i className="fas fa-sign-in-alt"></i>
-              进入管理
-            </button>
+  type="submit"
+  className="w-full py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium transition flex items-center justify-center gap-2"
+>
+  <i className="fas fa-sign-in-alt"></i>
+  验证
+</button>
           </form>
           
           <div className="text-center mt-6">
             <a href="/" className="text-white/50 hover:text-white text-sm transition flex items-center justify-center gap-1">
-              <i className="fas fa-arrow-left"></i>
-              返回首页
-            </a>
+  <i className="fas fa-arrow-left"></i>
+  返回
+</a>
           </div>
         </div>
       </div>
