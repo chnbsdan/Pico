@@ -32,12 +32,12 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="bg-white/20 backdrop-blur-sm hover:bg-white/30 transition px-3 py-2 rounded-lg text-gray-800 dark:text-white text-sm flex items-center gap-2"
+      className="bg-white/20 backdrop-blur-sm hover:bg-white/30 transition px-3 py-2 rounded-lg text-white text-sm flex items-center gap-2"
       title={isDark ? '切换到亮色模式' : '切换到暗色模式'}
     >
       {isDark ? (
         <>
-          <i className="fas fa-sun text-yellow-500"></i>
+          <i className="fas fa-sun text-yellow-400"></i>
           <span>亮色</span>
         </>
       ) : (
