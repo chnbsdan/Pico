@@ -1,10 +1,10 @@
-// api/random.js - 获取全部图片（包括两个分类的外部图片）
+// api/random.js - 合并 JSON 功能
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
-const GITHUB_REPO = process.env.GITHUB_REPO || 'imgbed-storage'
+const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 const FOLDERS = ['wallpaper', 'cover']
 
-// 从 GitHub 存储仓库读取所有外部图片
+// 获取外部图片
 async function getExternalImages() {
   try {
     const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/external.json`
@@ -17,8 +17,10 @@ async function getExternalImages() {
     })
     if (response.ok) {
       const data = await response.json()
-      // 合并两个分类的外部图片
-      return [...(data.wallpaper || []), ...(data.cover || [])]
+      const images = []
+      if (data.wallpaper) images.push(...data.wallpaper)
+      if (data.cover) images.push(...data.cover)
+      return images
     }
   } catch (error) {
     console.error('Failed to fetch external images:', error)
@@ -26,65 +28,69 @@ async function getExternalImages() {
   return []
 }
 
-async function isImageValid(url) {
+// 获取 GitHub 图片列表
+async function getGitHubImages(folder) {
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(url, { method: 'HEAD', signal: controller.signal })
-    clearTimeout(timeoutId)
-    return res.ok
-  } catch {
-    return false
+    const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${folder}`
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'User-Agent': 'Vercel-Serverless'
+      }
+    })
+    if (response.ok) {
+      const files = await response.json()
+      if (Array.isArray(files)) {
+        return files
+          .filter(f => f.name && f.name.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i))
+          .map(f => f.download_url)
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to fetch ${folder}:`, error)
   }
+  return []
 }
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Content-Disposition', 'inline')
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
   
+  const format = req.query.format  // 获取 format 参数
+  
   try {
-    let allImages = []
+    // 获取所有图片
+    const [wallpaperImages, coverImages, externalImages] = await Promise.all([
+      getGitHubImages('wallpaper'),
+      getGitHubImages('cover'),
+      getExternalImages()
+    ])
     
-    // 1. 获取 GitHub 图片
-    for (const folder of FOLDERS) {
-      const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${folder}`
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'User-Agent': 'Vercel-Serverless'
-        }
-      })
-      if (response.ok) {
-        const files = await response.json()
-        if (Array.isArray(files)) {
-          const images = files
-            .filter(f => f.name && f.name.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i))
-            .map(f => f.download_url)
-          allImages.push(...images)
-        }
-      }
-    }
-    
-    // 2. 获取所有外部图片
-    const externalImages = await getExternalImages()
-    for (const url of externalImages) {
-      if (await isImageValid(url)) {
-        allImages.push(url)
-      }
-    }
+    const allImages = [...wallpaperImages, ...coverImages, ...externalImages]
     
     if (allImages.length === 0) {
-      return res.status(404).send('No images found')
+      return res.status(404).json({ error: 'No images found' })
     }
     
-    const randomUrl = allImages[Math.floor(Math.random() * allImages.length)]
-    const imgRes = await fetch(randomUrl)
+    const randomIndex = Math.floor(Math.random() * allImages.length)
+    const randomUrl = allImages[randomIndex]
     
+    // 如果请求 JSON 格式
+    if (format === 'json') {
+      return res.status(200).json({
+        code: "200",
+        imgurl: randomUrl,
+        source: randomUrl,
+        total: allImages.length
+      })
+    }
+    
+    // 否则返回图片
+    const imgRes = await fetch(randomUrl)
     if (!imgRes.ok) {
       return res.status(500).send('Failed to fetch image')
     }
@@ -93,6 +99,7 @@ export default async function handler(req, res) {
     const body = await imgRes.arrayBuffer()
     
     res.setHeader('Content-Type', contentType)
+    res.setHeader('Content-Disposition', 'inline')
     res.send(Buffer.from(body))
   } catch (error) {
     console.error('Error in random.js:', error)
