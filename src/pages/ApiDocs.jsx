@@ -124,7 +124,7 @@ export default function ApiDocs() {
       style={{ 
         backgroundImage: isDarkMode 
           ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
-          : '#f0f2f5',  // 改成纯淡灰色
+          : '#fefefe',  // 改成柔和米白
         backgroundAttachment: 'fixed',
         transition: 'background-image 0.3s ease'
       }}
