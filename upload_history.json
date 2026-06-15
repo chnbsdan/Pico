@@ -1,5 +1,12 @@
 [
   {
+    "id": 1781496384981,
+    "filename": "20260615_image.jpg",
+    "url": "https://pico-beige.vercel.app/api/image?path=wallpaper/20260615_image.jpg",
+    "folder": "wallpaper",
+    "time": "2026-06-15T04:06:24.981Z"
+  },
+  {
     "id": 1781496267811,
     "filename": "20260615_untitled.png",
     "url": "https://pico-beige.vercel.app/api/image?path=cover/20260615_untitled.png",
