@@ -87,58 +87,83 @@ export async function deleteHistoryRecord(id) {
 
 // 获取预签名 URL
 export async function getPresignedUrl(filename, folder, fileSize, fileType) {
-  const res = await fetch(`/api/upload?action=presign`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename, folder, fileSize, fileType })
-  })
-  
-  if (!res.ok) {
-    const error = await res.json()
-    throw new Error(error.error || 'Failed to get upload URL')
+  try {
+    const res = await fetch(`/api/upload?action=presign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, folder, fileSize, fileType })
+    })
+    
+    if (!res.ok) {
+      const error = await res.json()
+      return { success: false, error: error.error || 'Failed to get upload URL' }
+    }
+    
+    return await res.json()
+  } catch (error) {
+    console.error('getPresignedUrl error:', error)
+    return { success: false, error: error.message }
   }
-  
-  return res.json()
 }
 
 // 直传文件到 GitHub（适用于大文件，绕过 Vercel 限制）
 export async function uploadDirect(file, folder) {
-  // 1. 获取预签名 URL
-  const { uploadUrl, filename, headers } = await getPresignedUrl(file.name, folder, file.size, file.type)
-  
-  // 2. 读取文件内容并转 Base64
-  const fileContent = await file.arrayBuffer()
-  const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileContent)))
-  
-  // 3. 直接 PUT 到 GitHub API
-  const response = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': headers.Authorization,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: `Upload ${filename}`,
-      content: base64Content,
-      branch: 'main'
+  try {
+    // 1. 获取预签名 URL
+    const presignResult = await getPresignedUrl(file.name, folder, file.size, file.type)
+    
+    if (!presignResult.success) {
+      throw new Error(presignResult.error || 'Failed to get upload URL')
+    }
+    
+    const { uploadUrl, filename, headers } = presignResult
+    
+    // 2. 读取文件内容并转 Base64
+    const fileContent = await file.arrayBuffer()
+    const uint8Array = new Uint8Array(fileContent)
+    let binary = ''
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i])
+    }
+    const base64Content = btoa(binary)
+    
+    // 3. 直接 PUT 到 GitHub API
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': headers?.Authorization || `Bearer ${localStorage.getItem('github_token')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: `Upload ${filename}`,
+        content: base64Content,
+        branch: 'main'
+      })
     })
-  })
-  
-  if (!response.ok) {
-    let errorMessage = 'Upload failed'
-    try {
-      const error = await response.json()
-      errorMessage = error.message || errorMessage
-    } catch (e) {}
-    throw new Error(errorMessage)
-  }
-  
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pcbed.vercel.app'
-  
-  return {
-    success: true,
-    filename: filename,
-    folder: folder,
-    url: `${baseUrl}/api/image?path=${folder}/${filename}`
+    
+    if (!response.ok) {
+      let errorMessage = 'Upload failed'
+      try {
+        const error = await response.json()
+        errorMessage = error.message || errorMessage
+      } catch (e) {}
+      throw new Error(errorMessage)
+    }
+    
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pcbed.vercel.app'
+    
+    return {
+      success: true,
+      filename: filename,
+      folder: folder,
+      url: `${baseUrl}/api/image?path=${folder}/${filename}`
+    }
+  } catch (error) {
+    console.error('UploadDirect error:', error)
+    return {
+      success: false,
+      filename: file.name,
+      error: error.message || '上传失败'
+    }
   }
 }
