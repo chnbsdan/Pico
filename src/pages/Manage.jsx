@@ -354,42 +354,47 @@ export default function Manage() {
           </button>
         </div>
         
-        <div className="p-2">
-          {/* 横屏目录 */}
-          <div
-            onClick={() => handleTabChange('wallpaper')}
-            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
-              activeTab === 'wallpaper'
-                ? 'bg-blue-600/50 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <i className={`fas ${activeTab === 'wallpaper' ? 'fa-folder-open' : 'fa-folder'}`}></i>
-              <span className="text-sm">横屏图片</span>
-            </div>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-              {images.wallpaper.length}
-            </span>
-          </div>
-          
-          {/* 竖屏目录 */}
-          <div
-            onClick={() => handleTabChange('cover')}
-            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition mt-1 ${
-              activeTab === 'cover'
-                ? 'bg-purple-600/50 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <i className={`fas ${activeTab === 'cover' ? 'fa-folder-open' : 'fa-folder'}`}></i>
-              <span className="text-sm">竖屏图片</span>
-            </div>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-              {images.cover.length}
-            </span>
-          </div>
+       <div className="p-2">
+  {/* 动态渲染所有图片文件夹 */}
+  {['wallpaper', 'cover', 'sh', 'sd'].map((folderName) => {
+    // 文件夹显示名称映射
+    const displayName = {
+      wallpaper: '横屏图片',
+      cover: '竖屏图片',
+      sh: '横屏图片 (sh)',
+      sd: '竖屏图片 (sd)'
+    }[folderName] || folderName
+    
+    // 文件夹颜色映射
+    const activeColor = {
+      wallpaper: 'bg-blue-600/50',
+      cover: 'bg-purple-600/50',
+      sh: 'bg-blue-600/50',
+      sd: 'bg-purple-600/50'
+    }[folderName] || 'bg-blue-600/50'
+    
+    return (
+      <div
+        key={folderName}
+        onClick={() => handleTabChange(folderName)}
+        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
+          folderName !== 'wallpaper' ? 'mt-1' : ''
+        } ${
+          activeTab === folderName
+            ? `${activeColor} text-white`
+            : 'text-white/70 hover:bg-white/10 hover:text-white'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <i className={`fas ${activeTab === folderName ? 'fa-folder-open' : 'fa-folder'}`}></i>
+          <span className="text-sm">{displayName}</span>
+        </div>
+        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+          {images[folderName]?.length || 0}
+        </span>
+      </div>
+    )
+  })}
           
           {/* 历史记录目录 */}
           <div
