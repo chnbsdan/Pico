@@ -1,4 +1,4 @@
-// src/pages/ApiDocs.jsx - 完整版
+// src/pages/ApiDocs.jsx - 修复暗色模式文字颜色
 import React, { useState } from 'react'
 import { copyToClipboard } from '../lib/api'
 import ThemeToggle from '../components/ThemeToggle'
@@ -12,7 +12,7 @@ export default function ApiDocs() {
     setTimeout(() => setCopiedApi(null), 2000)
   }
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pcbed.vercel.app'
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pico.hangdn.com'
 
   const apis = [
     {
@@ -43,19 +43,19 @@ export default function ApiDocs() {
       response: '直接返回图片文件'
     },
     {
-  id: 'json',
-  name: 'JSON 格式',
-  path: '/api/random?format=json',
-  method: 'GET',
-  description: '返回随机图片的 JSON 信息',
-  example: `curl "${baseUrl}/api/random?format=json"`,
-  response: `{
+      id: 'json',
+      name: 'JSON 格式',
+      path: '/api/random?format=json',
+      method: 'GET',
+      description: '返回随机图片的 JSON 信息',
+      example: `curl "${baseUrl}/api/random?format=json"`,
+      response: `{
   "code": "200",
   "imgurl": "${baseUrl}/api/random?format=json",
   "source": "https://raw.githubusercontent.com/chnbsdan/pcbed/main/wallpaper/xxx.jpg",
   "total": 128
 }`
-   },
+    },
     {
       id: 'stats',
       name: '统计信息',
@@ -66,11 +66,13 @@ export default function ApiDocs() {
       response: `{
   "github_folders": {
     "wallpaper": 33,
-    "cover": 8
+    "cover": 8,
+    "sh": 10,
+    "sd": 5
   },
-  "github_total": 41,
+  "github_total": 56,
   "external_total": 15,
-  "grand_total": 56
+  "grand_total": 71
 }`
     },
     {
@@ -108,7 +110,7 @@ export default function ApiDocs() {
   ]
 
   return (
-    <div className="min-h-screen py-6 px-4 bg-gray-100 dark:bg-gray-800 transition-colors duration-300">
+    <div className="min-h-screen py-6 px-4 bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
       {/* 右上角导航栏 */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
         <a 
@@ -126,7 +128,7 @@ export default function ApiDocs() {
         {/* 头部 */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <i className="fas fa-book text-3xl text-gray-600 dark:text-white/80"></i>
+            <i className="fas fa-book text-3xl text-gray-600 dark:text-gray-400"></i>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">API 接口文档</h1>
           </div>
           <p className="text-gray-500 dark:text-gray-400 text-sm">所有接口均支持 GET 请求（上传除外）</p>
@@ -137,7 +139,7 @@ export default function ApiDocs() {
           {apis.map((api) => {
             const fullUrl = `${baseUrl}${api.path}${api.id === 'image' ? '?path=wallpaper/example.jpg' : ''}`
             return (
-              <div key={api.id} className="bg-gray-300 dark:bg-gray-1000 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+              <div key={api.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className={`px-2 py-1 rounded text-xs font-mono text-white ${
@@ -152,14 +154,14 @@ export default function ApiDocs() {
                       href={fullUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
+                      className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                       title="打开链接"
                     >
                       <i className="fas fa-external-link-alt"></i>
                     </a>
                     <button
                       onClick={() => handleCopy(fullUrl, api.id)}
-                      className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
+                      className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                       title="复制接口地址"
                     >
                       {copiedApi === api.id ? <i className="fas fa-check text-green-500"></i> : <i className="fas fa-copy"></i>}
@@ -172,9 +174,9 @@ export default function ApiDocs() {
                   
                   <div>
                     <p className="text-gray-500 dark:text-gray-400 text-xs mb-1 flex items-center gap-1">
-                    <i className="fas fa-code text-xs"></i> 示例
+                      <i className="fas fa-code text-xs"></i> 示例
                     </p>
-                    <div className="bg-white dark:bg-gray-900 rounded-lg p-3 overflow-x-auto">
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 overflow-x-auto">
                       <code className="text-gray-700 dark:text-gray-300 text-xs font-mono break-all">{api.example}</code>
                       <button
                         onClick={() => handleCopy(api.example, `example-${api.id}`)}
@@ -187,10 +189,10 @@ export default function ApiDocs() {
                   </div>
                   
                   <div>
-                     <p className="text-gray-500 dark:text-gray-400 text-xs mb-1 flex items-center gap-1">
-                     <i className="fas fa-arrow-right text-xs"></i> 返回示例
-                     </p>
-                    <div className="bg-white dark:bg-gray-900 rounded-lg p-3 overflow-x-auto">
+                    <p className="text-gray-500 dark:text-gray-400 text-xs mb-1 flex items-center gap-1">
+                      <i className="fas fa-arrow-right text-xs"></i> 返回示例
+                    </p>
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 overflow-x-auto">
                       <pre className="text-gray-700 dark:text-gray-300 text-xs font-mono whitespace-pre-wrap break-all">{api.response}</pre>
                     </div>
                   </div>
@@ -203,7 +205,7 @@ export default function ApiDocs() {
         {/* 页尾说明 */}
         <div className="text-center mt-8 text-gray-400 dark:text-gray-500 text-xs">
           <p>所有图片均代理访问，保障私有仓库安全</p>
-          <p className="mt-1">更多信息请访问 <a href="https://github.com/chnbsdan/pcbed" target="_blank" rel="noopener noreferrer" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">GitHub 仓库</a></p>
+          <p className="mt-1">更多信息请访问 <a href="https://github.com/chnbsdan/Pico" target="_blank" rel="noopener noreferrer" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">GitHub 仓库</a></p>
         </div>
       </div>
     </div>
