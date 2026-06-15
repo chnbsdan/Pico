@@ -2,7 +2,7 @@
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'imgbed-storage'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
-const FOLDERS = ['wallpaper', 'cover']
+const FOLDERS = ['wallpaper', 'cover', 'sh', 'sd']
 
 async function getExternalImages() {
   try {
