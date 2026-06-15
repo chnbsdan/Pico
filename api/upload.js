@@ -1,13 +1,18 @@
-// api/upload.js - 完整版（支持预签名 URL + 自定义文件夹名）
+// api/upload.js - 完整修复版
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 const FOLDER_WALLPAPER = process.env.FOLDER_WALLPAPER || 'wallpaper'
 const FOLDER_COVER = process.env.FOLDER_COVER || 'cover'
 
-const validFolders = [FOLDER_WALLPAPER, FOLDER_COVER]
+// 映射函数：前端传 wallpaper/cover → 实际文件夹名
+function mapFolder(folder) {
+  if (folder === 'wallpaper') return FOLDER_WALLPAPER
+  if (folder === 'cover') return FOLDER_COVER
+  return folder
+}
 
-// 获取预签名 URL（用于前端直传大文件）
+// 获取预签名 URL
 async function getPresignedUrl(filename, folder) {
   const now = new Date()
   const datePrefix = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0')
@@ -118,20 +123,25 @@ export default async function handler(req, res) {
   
   const { action } = req.query
   
-  // ========== 动作1: 获取预签名 URL（用于前端直传大文件）==========
+  // 打印环境变量（调试用）
+  console.log('=== 环境变量 ===')
+  console.log('FOLDER_WALLPAPER:', FOLDER_WALLPAPER)
+  console.log('FOLDER_COVER:', FOLDER_COVER)
+  console.log('================')
+  
+  // 获取预签名 URL
   if (action === 'presign') {
     const { filename, folder } = req.body
     if (!filename || !folder) {
       return res.status(400).json({ error: 'Missing filename or folder' })
     }
     
-    // 验证文件夹
-    let targetFolder = folder
-    if (targetFolder === 'wallpaper') targetFolder = FOLDER_WALLPAPER
-    if (targetFolder === 'cover') targetFolder = FOLDER_COVER
+    // 映射文件夹名
+    const targetFolder = mapFolder(folder)
+    console.log(`映射: ${folder} → ${targetFolder}`)
     
-    if (!validFolders.includes(targetFolder)) {
-      return res.status(400).json({ error: `Invalid folder. Use: ${validFolders.join(', ')}` })
+    if (![FOLDER_WALLPAPER, FOLDER_COVER].includes(targetFolder)) {
+      return res.status(400).json({ error: `Invalid folder. Use: ${FOLDER_WALLPAPER} or ${FOLDER_COVER}` })
     }
     
     const presigned = await getPresignedUrl(filename, targetFolder)
@@ -141,7 +151,7 @@ export default async function handler(req, res) {
     })
   }
   
-  // ========== 动作2: 传统上传（通过 Vercel 中转）==========
+  // 传统上传
   try {
     const chunks = []
     for await (const chunk of req) chunks.push(chunk)
@@ -152,14 +162,14 @@ export default async function handler(req, res) {
     
     const formData = parseMultipart(buffer, boundary)
     const file = formData.file
-    let targetFolder = formData.folder || FOLDER_WALLPAPER
+    let rawFolder = formData.folder || 'wallpaper'
     
-    // 兼容前端的 'wallpaper'/'cover' 映射到自定义文件夹名
-    if (targetFolder === 'wallpaper') targetFolder = FOLDER_WALLPAPER
-    if (targetFolder === 'cover') targetFolder = FOLDER_COVER
+    // 映射文件夹名
+    const targetFolder = mapFolder(rawFolder)
+    console.log(`传统上传映射: ${rawFolder} → ${targetFolder}`)
     
-    if (!validFolders.includes(targetFolder)) {
-      return res.status(400).json({ error: `Invalid folder. Use: ${validFolders.join(', ')}` })
+    if (![FOLDER_WALLPAPER, FOLDER_COVER].includes(targetFolder)) {
+      return res.status(400).json({ error: `Invalid folder. Use: ${FOLDER_WALLPAPER} or ${FOLDER_COVER}` })
     }
     
     if (!file || !file.data) return res.status(400).json({ error: 'No file uploaded' })
