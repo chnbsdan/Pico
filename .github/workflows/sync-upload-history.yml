@@ -32,4 +32,4 @@ jobs:
       - name: 同步上传历史
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/sync-history.js
+        run: node .github/scripts/sync-history.cjs
