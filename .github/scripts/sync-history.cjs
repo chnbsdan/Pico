@@ -39,7 +39,8 @@ function scanImages() {
                 fileCount++;
                 const filePath = `${folder}/${file}`;
                 const commitTime = getFileCommitTime(filePath);
-                const fullUrl = `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/main/${filePath}`;
+                const baseUrl = 'https://pico-beige.vercel.app'  // 改成你的域名
+const fullUrl = `${baseUrl}/api/image?path=${folder}/${file}`;
                 images.push({
                     id: `${new Date(commitTime).getTime()}-${file}`,
                     filename: file,
