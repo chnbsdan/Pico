@@ -1,0 +1,42 @@
+name: 同步上传历史记录
+
+on:
+  # 每当 main 分支有 push 时触发
+  push:
+    branches: [main]
+    paths:
+      - 'sh/**'
+      - 'sd/**'
+      - 'wallpaper/**'
+      - 'cover/**'
+  # 每天凌晨 2 点定时执行
+  schedule:
+    - cron: '0 2 * * *'
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  sync-history:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装依赖
+        run: npm install -g moment
+
+      - name: 同步上传历史
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node .github/scripts/sync-history.js
