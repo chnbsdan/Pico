@@ -1,7 +1,10 @@
-// api/image.js - 统一的图片代理 API
+// api/image.js - 图片代理
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+
+// 允许的文件夹列表（添加 sh 和 sd）
+const ALLOWED_FOLDERS = ['wallpaper', 'cover', 'sh', 'sd']
 
 function getContentType(filename) {
   const ext = filename.split('.').pop().toLowerCase()
@@ -27,8 +30,9 @@ export default async function handler(req, res) {
   const folder = parts[0]
   const filename = parts.slice(1).join('/')
   
-  if (!['wallpaper', 'cover'].includes(folder)) {
-    return res.status(403).send('Invalid folder')
+  // 验证文件夹是否允许
+  if (!ALLOWED_FOLDERS.includes(folder)) {
+    return res.status(403).send(`Invalid folder: ${folder}`)
   }
   
   if (!filename || filename.includes('..')) {
@@ -56,6 +60,6 @@ export default async function handler(req, res) {
     res.send(Buffer.from(body))
   } catch (error) {
     console.error('Proxy error:', error)
-    res.status(500).send('Internal server error')
+    res.status(500).send('Internal error')
   }
 }
