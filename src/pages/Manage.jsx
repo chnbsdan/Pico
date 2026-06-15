@@ -1,4 +1,4 @@
-// src/pages/Manage.jsx - 图片管理页面（含历史记录）
+// src/pages/Manage.jsx - 图片管理页面（含历史记录、刷新按钮、记住登录）
 import React, { useState, useEffect } from 'react'
 import { fetchImageList, copyToClipboard, batchCopyLinks } from '../lib/api'
 import ThemeToggle from '../components/ThemeToggle'
@@ -8,7 +8,7 @@ export default function Manage() {
   const [password, setPassword] = useState('')
   const [passwordError, setPasswordError] = useState(false)
   
-  const [images, setImages] = useState({ wallpaper: [], cover: [] })
+  const [images, setImages] = useState({ wallpaper: [], cover: [], sh: [], sd: [] })
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('wallpaper')
   const [copiedId, setCopiedId] = useState(null)
@@ -31,16 +31,25 @@ export default function Manage() {
   const [historyList, setHistoryList] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
+  // 检查本地存储的登录状态
+  useEffect(() => {
+    const savedAuth = localStorage.getItem('manage_auth')
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true)
+      loadImages()
+    }
+  }, [])
+
   const getProxyUrl = (img) => {
     if (img.source === 'external') {
       return img.url
     }
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pcbed.vercel.app'
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pico-beige.vercel.app'
     return `${baseUrl}/api/image?path=${img.folder}/${img.name}`
   }
 
   const getImageAspect = (img) => {
-    if (img.folder === 'wallpaper') {
+    if (img.folder === 'wallpaper' || img.folder === 'sh') {
       return 'aspect-video'
     } else {
       return 'aspect-9/16'
@@ -78,6 +87,7 @@ export default function Manage() {
     e.preventDefault()
     if (password === 'admin123') {
       setIsAuthenticated(true)
+      localStorage.setItem('manage_auth', 'true')
       setPasswordError(false)
       loadImages()
     } else {
@@ -90,11 +100,19 @@ export default function Manage() {
     setLoading(true)
     try {
       const data = await fetchImageList()
-      setImages(data.folders)
+      setImages(data.folders || { wallpaper: [], cover: [], sh: [], sd: [] })
     } catch (err) {
       console.error('加载图片列表失败:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 刷新当前页面
+  const refreshCurrent = () => {
+    loadImages()
+    if (activeTab === 'history') {
+      loadHistory()
     }
   }
 
@@ -325,13 +343,23 @@ export default function Manage() {
         lg:translate-x-0 lg:left-4 lg:top-1/2 lg:-translate-y-1/2 lg:w-52 lg:h-auto lg:rounded-xl lg:bg-white/10 lg:backdrop-blur-md lg:border lg:border-white/20
       `}>
         <div className="p-4 border-b border-white/20 flex justify-between items-center lg:block">
-          <div className="flex items-center gap-2 text-white font-medium">
-            <i className="fas fa-folder-tree"></i>
-            <span>图片库</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white font-medium">
+              <i className="fas fa-folder-tree"></i>
+              <span>图片库</span>
+            </div>
+            {/* 刷新按钮 */}
+            <button
+              onClick={refreshCurrent}
+              className="text-white/60 hover:text-white transition p-1 rounded-lg hover:bg-white/10"
+              title="刷新"
+            >
+              <i className="fas fa-sync-alt"></i>
+            </button>
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="lg:hidden text-white/70 hover:text-white text-xl"
+            className="lg:hidden text-white/70 hover:text-white text-xl mt-2"
           >
             <i className="fas fa-times"></i>
           </button>
@@ -346,7 +374,10 @@ export default function Manage() {
             <span className="text-sm">返回首页</span>
           </a>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={() => {
+              setIsAuthenticated(false)
+              localStorage.removeItem('manage_auth')
+            }}
             className="flex items-center gap-2 w-full p-2 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition mt-1"
           >
             <i className="fas fa-sign-out-alt w-4"></i>
@@ -354,47 +385,47 @@ export default function Manage() {
           </button>
         </div>
         
-       <div className="p-2">
-  {/* 动态渲染所有图片文件夹 */}
-  {['wallpaper', 'cover', 'sh', 'sd'].map((folderName) => {
-    // 文件夹显示名称映射
-    const displayName = {
-      wallpaper: '横屏图片',
-      cover: '竖屏图片',
-      sh: '横屏图片 (sh)',
-      sd: '竖屏图片 (sd)'
-    }[folderName] || folderName
-    
-    // 文件夹颜色映射
-    const activeColor = {
-      wallpaper: 'bg-blue-600/50',
-      cover: 'bg-purple-600/50',
-      sh: 'bg-blue-600/50',
-      sd: 'bg-purple-600/50'
-    }[folderName] || 'bg-blue-600/50'
-    
-    return (
-      <div
-        key={folderName}
-        onClick={() => handleTabChange(folderName)}
-        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
-          folderName !== 'wallpaper' ? 'mt-1' : ''
-        } ${
-          activeTab === folderName
-            ? `${activeColor} text-white`
-            : 'text-white/70 hover:bg-white/10 hover:text-white'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <i className={`fas ${activeTab === folderName ? 'fa-folder-open' : 'fa-folder'}`}></i>
-          <span className="text-sm">{displayName}</span>
-        </div>
-        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-          {images[folderName]?.length || 0}
-        </span>
-      </div>
-    )
-  })}
+        <div className="p-2">
+          {/* 动态渲染所有图片文件夹 */}
+          {['wallpaper', 'cover', 'sh', 'sd'].map((folderName) => {
+            // 文件夹显示名称映射
+            const displayName = {
+              wallpaper: '横屏图片',
+              cover: '竖屏图片',
+              sh: '横屏图片 (sh)',
+              sd: '竖屏图片 (sd)'
+            }[folderName] || folderName
+            
+            // 文件夹颜色映射
+            const activeColor = {
+              wallpaper: 'bg-blue-600/50',
+              cover: 'bg-purple-600/50',
+              sh: 'bg-blue-600/50',
+              sd: 'bg-purple-600/50'
+            }[folderName] || 'bg-blue-600/50'
+            
+            return (
+              <div
+                key={folderName}
+                onClick={() => handleTabChange(folderName)}
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
+                  folderName !== 'wallpaper' ? 'mt-1' : ''
+                } ${
+                  activeTab === folderName
+                    ? `${activeColor} text-white`
+                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <i className={`fas ${activeTab === folderName ? 'fa-folder-open' : 'fa-folder'}`}></i>
+                  <span className="text-sm">{displayName}</span>
+                </div>
+                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                  {images[folderName]?.length || 0}
+                </span>
+              </div>
+            )
+          })}
           
           {/* 历史记录目录 */}
           <div
@@ -424,11 +455,13 @@ export default function Manage() {
             <div>
               <h2 className="text-white font-medium flex items-center gap-2 text-sm sm:text-base">
                 <i className={`fas ${
-                  activeTab === 'wallpaper' ? 'fa-arrows-alt' : 
-                  activeTab === 'cover' ? 'fa-mobile-alt' : 'fa-history'
+                  activeTab === 'wallpaper' || activeTab === 'sh' ? 'fa-arrows-alt' : 
+                  activeTab === 'cover' || activeTab === 'sd' ? 'fa-mobile-alt' : 'fa-history'
                 }`}></i>
-                {activeTab === 'wallpaper' ? '横屏图片' : 
-                 activeTab === 'cover' ? '竖屏图片' : '上传历史'}
+                {activeTab === 'wallpaper' ? '横屏图片 (wallpaper)' : 
+                 activeTab === 'cover' ? '竖屏图片 (cover)' : 
+                 activeTab === 'sh' ? '横屏图片 (sh)' : 
+                 activeTab === 'sd' ? '竖屏图片 (sd)' : '上传历史'}
               </h2>
               {activeTab !== 'history' && (
                 <p className="text-white/40 text-xs mt-1">
@@ -469,26 +502,26 @@ export default function Manage() {
         {activeTab !== 'history' && (
           <div className="mb-4">
             <div className="relative">
-  <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-white/40 text-sm"></i>
-  <input
-    type="text"
-    placeholder="按文件名搜索图片..."
-    value={searchKeyword}
-    onChange={(e) => {
-      setSearchKeyword(e.target.value)
-      setCurrentPage(1)
-    }}
-    className="w-full pl-9 pr-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  />
-  {searchKeyword && (
-    <button
-      onClick={() => setSearchKeyword('')}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white"
-    >
-      <i className="fas fa-times-circle"></i>
-    </button>
-  )}
-</div>
+              <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-white/40 text-sm"></i>
+              <input
+                type="text"
+                placeholder="按文件名搜索图片..."
+                value={searchKeyword}
+                onChange={(e) => {
+                  setSearchKeyword(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full pl-9 pr-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {searchKeyword && (
+                <button
+                  onClick={() => setSearchKeyword('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white"
+                >
+                  <i className="fas fa-times-circle"></i>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -542,64 +575,63 @@ export default function Manage() {
 
         {/* 图片网格或历史记录 */}
         {activeTab === 'history' ? (
-  // 历史记录列表 - 一行两条
-  historyLoading ? (
-    <div className="flex justify-center items-center py-20">
-      <i className="fas fa-spinner fa-pulse text-3xl text-white/50"></i>
-    </div>
-  ) : historyList.length === 0 ? (
-    <div className="text-center py-20 bg-white/5 rounded-xl">
-      <i className="fas fa-inbox text-5xl text-white/30 mb-3"></i>
-      <p className="text-white/50">暂无上传记录</p>
-    </div>
-  ) : (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {historyList.map((record) => (
-        <div key={record.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-white truncate">{record.filename}</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-white/20 text-white/70">
-                  {record.folder === 'wallpaper' ? '横屏' : '竖屏'}
-                </span>
-              </div>
-              <div className="text-xs text-white/40 mt-1">{formatTime(record.time)}</div>
-              <code className="text-xs text-white/50 mt-1 block truncate">{record.url}</code>
+          historyLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <i className="fas fa-spinner fa-pulse text-3xl text-white/50"></i>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleCopy(record.url, record.id)}
-                className="p-2 rounded-lg hover:bg-white/10 transition"
-                title="复制链接"
-              >
-                {copiedId === record.id ? (
-                  <i className="fas fa-check text-green-400"></i>
-                ) : (
-                  <i className="fas fa-copy text-white/60"></i>
-                )}
-              </button>
-              <a
-                href={record.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg hover:bg-white/10 transition"
-                title="打开图片"
-              >
-                <i className="fas fa-external-link-alt text-white/60"></i>
-              </a>
-              <button
-                onClick={() => handleDeleteHistory(record.id)}
-                className="p-2 rounded-lg hover:bg-red-500/20 transition"
-                title="删除记录"
-              >
-                <i className="fas fa-trash-alt text-red-400"></i>
-              </button>
+          ) : historyList.length === 0 ? (
+            <div className="text-center py-20 bg-white/5 rounded-xl">
+              <i className="fas fa-inbox text-5xl text-white/30 mb-3"></i>
+              <p className="text-white/50">暂无上传记录</p>
             </div>
-          </div>
-        </div>
-      ))}
-    </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {historyList.map((record) => (
+                <div key={record.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-white truncate">{record.filename}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-white/20 text-white/70">
+                          {record.folder === 'wallpaper' || record.folder === 'sh' ? '横屏' : '竖屏'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-white/40 mt-1">{formatTime(record.time)}</div>
+                      <code className="text-xs text-white/50 mt-1 block truncate">{record.url}</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleCopy(record.url, record.id)}
+                        className="p-2 rounded-lg hover:bg-white/10 transition"
+                        title="复制链接"
+                      >
+                        {copiedId === record.id ? (
+                          <i className="fas fa-check text-green-400"></i>
+                        ) : (
+                          <i className="fas fa-copy text-white/60"></i>
+                        )}
+                      </button>
+                      <a
+                        href={record.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-lg hover:bg-white/10 transition"
+                        title="打开图片"
+                      >
+                        <i className="fas fa-external-link-alt text-white/60"></i>
+                      </a>
+                      <button
+                        onClick={() => handleDeleteHistory(record.id)}
+                        className="p-2 rounded-lg hover:bg-red-500/20 transition"
+                        title="删除记录"
+                      >
+                        <i className="fas fa-trash-alt text-red-400"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )
         ) : loading ? (
           <div className="flex justify-center items-center py-20 bg-white/5 rounded-xl">
