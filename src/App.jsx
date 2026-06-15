@@ -67,7 +67,7 @@ function App() {
           ctx.drawImage(img, 0, 0)
           
           let savedQuality = localStorage.getItem('compressQuality')
-          let quality = savedQuality ? parseInt(savedQuality) / 100 : 0.9
+          let quality = savedQuality ? parseInt(savedQuality) / 100 : 0.85
           
           let dataUrl = canvas.toDataURL('image/jpeg', quality)
           let size = dataURLToBlob(dataUrl).size
@@ -150,6 +150,7 @@ function App() {
         continue
       }
       
+      // WebP 转换（前端处理）
       if (convertToWebp && !['gif', 'avif'].includes(ext)) {
         try {
           file = await convertToWebP(file)
@@ -159,6 +160,7 @@ function App() {
         }
       }
       
+      // 压缩处理（前端处理）
       if (file.size > 5 * 1024 * 1024 && file.type !== 'image/webp') {
         try {
           file = await compressImage(file)
@@ -170,6 +172,7 @@ function App() {
       
       while (retry > 0 && !uploaded) {
         try {
+          // 使用直传，不经过 Vercel
           const data = await uploadDirect(file, folder)
           if (data.success) {
             allResults.push({ success: true, filename: data.filename, url: data.url, folder })
@@ -214,7 +217,7 @@ function App() {
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
         <a 
           href="/manage" 
-          className="bg-white/20 backdrop-blur-sm hover:bg-white/30 transition px-3 py-2 rounded-lg text-gray-1200 dark:text-white text-sm flex items-center gap-2"
+          className="bg-white/20 backdrop-blur-sm hover:bg-white/30 transition px-3 py-2 rounded-lg text-gray-700 dark:text-white text-sm flex items-center gap-2"
           title="管理后台"
         >
           <i className="fas fa-cog"></i>
@@ -222,7 +225,7 @@ function App() {
         </a>
         <a 
           href="/docs" 
-          className="bg-white/20 backdrop-blur-sm hover:bg-white/30 transition px-3 py-2 rounded-lg text-gray-1200 dark:text-white text-sm flex items-center gap-2"
+          className="bg-white/20 backdrop-blur-sm hover:bg-white/30 transition px-3 py-2 rounded-lg text-gray-700 dark:text-white text-sm flex items-center gap-2"
           title="API 文档"
         >
           <i className="fas fa-book"></i>
