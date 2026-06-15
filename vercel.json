@@ -1,4 +1,8 @@
 {
+  "env": {
+    "FOLDER_WALLPAPER": "wallpaper",
+    "FOLDER_COVER": "cover"
+  },
   "functions": {
     "api/upload.js": {
       "maxDuration": 30
