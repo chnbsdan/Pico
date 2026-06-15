@@ -5,7 +5,7 @@ import ApiSection from './components/ApiSection'
 import UploadArea from './components/UploadArea'
 import UploadResult from './components/UploadResult'
 import Footer from './components/Footer'
-import { fetchStats, uploadImage, addHistoryRecord } from './lib/api'
+import { fetchStats, uploadDirect, addHistoryRecord } from './lib/api'
 import Manage from './pages/Manage'
 import ApiDocs from './pages/ApiDocs'
 import ThemeToggle from './components/ThemeToggle'
@@ -170,7 +170,7 @@ function App() {
       
       while (retry > 0 && !uploaded) {
         try {
-          const data = await uploadImage(file, folder)
+          const data = await uploadDirect(file, folder)
           if (data.success) {
             allResults.push({ success: true, filename: data.filename, url: data.url, folder })
             setUploadResults([...allResults])
