@@ -6,6 +6,13 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
   const [bgRefresh, setBgRefresh] = useState(false)
   const fileInputRef = useRef(null)
 
+  // 文件夹显示名称（与实际存储文件夹名分开）
+  // 实际存储名由后端环境变量决定，前端仍用 wallpaper/cover 作为标识
+  const folderDisplayNames = {
+    wallpaper: '横屏',
+    cover: '竖屏'
+  }
+
   const refreshBackground = () => {
     setBgRefresh(true)
     setTimeout(() => setBgRefresh(false), 200)
@@ -102,7 +109,7 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
             }`}
           >
             <i className="fas fa-arrows-alt text-xs"></i>
-            横屏
+            {folderDisplayNames.wallpaper}
           </button>
           <button
             onClick={() => setFolder('cover')}
@@ -113,7 +120,7 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
             }`}
           >
             <i className="fas fa-mobile-alt text-xs"></i>
-            竖屏
+            {folderDisplayNames.cover}
           </button>
         </div>
       </div>
@@ -198,8 +205,8 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
         </div>
         
         <p className="text-xs text-blue-500 mt-3">
-        <i className="fas fa-folder-open mr-1"></i>
-             当前上传到: {folder === 'wallpaper' ? '横屏 (wallpaper)' : '竖屏 (cover)'}
+          <i className="fas fa-folder-open mr-1"></i>
+          当前上传到: {folder === 'wallpaper' ? folderDisplayNames.wallpaper : folderDisplayNames.cover}
         </p>
       </div>
 
@@ -212,7 +219,7 @@ export default function UploadArea({ onUpload, isLoading, convertToWebp, onConve
         onChange={handleFileSelect}
       />
 
-      {/* 只保留上传中转圈提示，没有进度条 */}
+      {/* 上传中转圈提示 */}
       {isLoading && (
         <div className="mt-3 text-center">
           <div className="inline-flex items-center gap-2 text-sm text-orange-600">
