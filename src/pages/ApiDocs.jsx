@@ -108,7 +108,7 @@ export default function ApiDocs() {
   ]
 
   return (
-    <div className="min-h-screen py-6 px-4 bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+    <div className="min-h-screen py-6 px-4 bg-gray-100 dark:bg-gray-800 transition-colors duration-300">
       {/* 右上角导航栏 */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
         <a 
