@@ -1,4 +1,4 @@
-// src/pages/Manage.jsx - 图片管理页面（美化暗色模式版）
+// src/pages/Manage.jsx - 图片管理页面（含历史记录批量删除）
 import React, { useState, useEffect } from 'react'
 import { fetchImageList, copyToClipboard, batchCopyLinks } from '../lib/api'
 import ThemeToggle from '../components/ThemeToggle'
@@ -25,6 +25,9 @@ export default function Manage() {
   const [searchKeyword, setSearchKeyword] = useState('')
   const [historyList, setHistoryList] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  
+  // 历史记录批量选择状态
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState(new Set())
 
   useEffect(() => {
     const savedAuth = localStorage.getItem('manage_auth')
@@ -36,7 +39,7 @@ export default function Manage() {
 
   const getProxyUrl = (img) => {
     if (img.source === 'external') return img.url
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pico-beige.vercel.app'
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pico.hangdn.com'
     return `${baseUrl}/api/image?path=${img.folder}/${img.name}`
   }
 
@@ -61,10 +64,57 @@ export default function Manage() {
     if (!confirm('确定要删除这条记录吗？')) return
     try {
       const res = await fetch(`/api/history?id=${id}`, { method: 'DELETE' })
-      if (res.ok) await loadHistory()
+      if (res.ok) {
+        await loadHistory()
+        setSelectedHistoryIds(new Set())
+      }
     } catch (err) {
       console.error('删除失败:', err)
     }
+  }
+
+  // 历史记录批量操作
+  const toggleSelectHistory = (id, e) => {
+    if (e) e.stopPropagation()
+    const newSelected = new Set(selectedHistoryIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedHistoryIds(newSelected)
+  }
+
+  const selectAllHistory = () => {
+    if (selectedHistoryIds.size === historyList.length) {
+      setSelectedHistoryIds(new Set())
+    } else {
+      const allIds = new Set(historyList.map(record => record.id))
+      setSelectedHistoryIds(allIds)
+    }
+  }
+
+  const handleBatchDeleteHistory = async () => {
+    const selectedCount = selectedHistoryIds.size
+    if (selectedCount === 0) {
+      alert('请先选择要删除的记录')
+      return
+    }
+    if (!confirm(`确定要删除选中的 ${selectedCount} 条记录吗？\n\n⚠️ 此操作不可恢复！`)) return
+    
+    let successCount = 0, failCount = 0
+    for (const id of selectedHistoryIds) {
+      try {
+        const res = await fetch(`/api/history?id=${id}`, { method: 'DELETE' })
+        if (res.ok) successCount++
+        else failCount++
+      } catch {
+        failCount++
+      }
+    }
+    alert(`✅ 删除完成\n成功: ${successCount} 条\n失败: ${failCount} 条`)
+    setSelectedHistoryIds(new Set())
+    await loadHistory()
   }
 
   const handleLogin = (e) => {
@@ -162,6 +212,7 @@ export default function Manage() {
     setCurrentPage(1)
     setSearchKeyword('')
     setSelectedImages(new Set())
+    setSelectedHistoryIds(new Set())
     setMobileMenuOpen(false)
     if (tab === 'history') loadHistory()
   }
@@ -215,14 +266,7 @@ export default function Manage() {
             <p className="text-white/50 text-sm mt-1">请输入密码进入</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="请输入管理密码"
-              className="w-full px-4 py-2 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="请输入管理密码" className="w-full px-4 py-2 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
             {passwordError && <p className="text-red-400 text-sm text-center"><i className="fas fa-exclamation-circle mr-1"></i>密码错误，请重试</p>}
             <div className="flex justify-center">
               <button type="submit" className="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium transition">验证</button>
@@ -239,54 +283,29 @@ export default function Manage() {
       <ThemeToggle />
       
       {/* 移动端菜单按钮 */}
-      <button
-        onClick={() => setMobileMenuOpen(true)}
-        className="fixed top-4 left-4 z-50 lg:hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 transition p-2.5 rounded-lg text-gray-700 dark:text-white shadow-md"
-      >
-        <i className="fas fa-bars text-lg"></i>
-      </button>
+      <button onClick={() => setMobileMenuOpen(true)} className="fixed top-4 left-4 z-50 lg:hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 transition p-2.5 rounded-lg text-gray-700 dark:text-white shadow-md"><i className="fas fa-bars text-lg"></i></button>
 
       {/* 左侧悬浮目录 */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)} />
-      )}
+      {mobileMenuOpen && (<div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)} />)}
       
-      <div className={`
-        fixed top-0 left-0 h-full z-50 w-64 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-2xl transition-transform duration-300 ease-in-out
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:left-4 lg:top-1/2 lg:-translate-y-1/2 lg:w-56 lg:h-auto lg:rounded-2xl lg:bg-white/90 dark:lg:bg-gray-900/90 lg:backdrop-blur-md lg:border lg:border-gray-200 dark:lg:border-gray-700
-      `}>
+      <div className={`fixed top-0 left-0 h-full z-50 w-64 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-2xl transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:left-4 lg:top-1/2 lg:-translate-y-1/2 lg:w-56 lg:h-auto lg:rounded-2xl lg:bg-white/90 dark:lg:bg-gray-900/90 lg:backdrop-blur-md lg:border lg:border-gray-200 dark:lg:border-gray-700`}>
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center lg:block">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 font-medium">
-              <i className="fas fa-folder-tree text-blue-500"></i>
-              <span>图片库</span>
-            </div>
-            <button onClick={refreshCurrent} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" title="刷新">
-              <i className="fas fa-sync-alt"></i>
-            </button>
+            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 font-medium"><i className="fas fa-folder-tree text-blue-500"></i><span>图片库</span></div>
+            <button onClick={refreshCurrent} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" title="刷新"><i className="fas fa-sync-alt"></i></button>
           </div>
           <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white text-xl mt-2"><i className="fas fa-times"></i></button>
         </div>
         
         <div className="p-3 border-b border-gray-200 dark:border-gray-800">
-          <a href="/" className="flex items-center gap-2 w-full p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            <i className="fas fa-home w-4 text-blue-500"></i><span className="text-sm">返回首页</span>
-          </a>
-          <button onClick={() => { setIsAuthenticated(false); localStorage.removeItem('manage_auth') }} className="flex items-center gap-2 w-full p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition mt-1">
-            <i className="fas fa-sign-out-alt w-4 text-red-500"></i><span className="text-sm">退出登录</span>
-          </button>
+          <a href="/" className="flex items-center gap-2 w-full p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"><i className="fas fa-home w-4 text-blue-500"></i><span className="text-sm">返回首页</span></a>
+          <button onClick={() => { setIsAuthenticated(false); localStorage.removeItem('manage_auth') }} className="flex items-center gap-2 w-full p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition mt-1"><i className="fas fa-sign-out-alt w-4 text-red-500"></i><span className="text-sm">退出登录</span></button>
         </div>
         
         <div className="p-2">
           {['wallpaper', 'cover', 'sh', 'sd'].map((folderName) => {
             const displayName = { wallpaper: '横屏图片', cover: '竖屏图片', sh: '横屏图片 (sh)', sd: '竖屏图片 (sd)' }[folderName]
-            const activeColor = {
-              wallpaper: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-              cover: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-              sh: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-              sd: 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
-            }[folderName]
+            const activeColor = { wallpaper: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', cover: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', sh: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', sd: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' }[folderName]
             return (
               <div key={folderName} onClick={() => handleTabChange(folderName)} className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all duration-200 ${folderName !== 'wallpaper' ? 'mt-1' : ''} ${activeTab === folderName ? `${activeColor} bg-gradient-to-r` : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                 <div className="flex items-center gap-2"><i className={`fas ${activeTab === folderName ? 'fa-folder-open' : 'fa-folder'} text-sm`}></i><span className="text-sm font-medium">{displayName}</span></div>
@@ -335,7 +354,7 @@ export default function Manage() {
           </div>
         )}
 
-        {/* 批量操作栏 */}
+        {/* 批量操作栏（图片） */}
         {activeTab !== 'history' && selectedImages.size > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 mb-4 flex items-center justify-between flex-wrap gap-2 border border-blue-200 dark:border-blue-800">
             <span className="text-blue-700 dark:text-blue-300 text-sm flex items-center gap-2"><i className="fas fa-check-circle"></i>已选择 {selectedImages.size} 张图片<button onClick={selectAll} className="text-xs text-blue-600 dark:text-blue-400 hover:underline ml-2">{selectedImages.size === paginatedImages.length ? '取消全选' : '全选'}</button></span>
@@ -355,6 +374,17 @@ export default function Manage() {
           </div>
         )}
 
+        {/* 批量操作栏（历史记录） */}
+        {activeTab === 'history' && selectedHistoryIds.size > 0 && (
+          <div className="bg-teal-50 dark:bg-teal-900/30 rounded-xl p-3 mb-4 flex items-center justify-between flex-wrap gap-2 border border-teal-200 dark:border-teal-800">
+            <span className="text-teal-700 dark:text-teal-300 text-sm flex items-center gap-2">
+              <i className="fas fa-check-circle"></i>已选择 {selectedHistoryIds.size} 条记录
+              <button onClick={selectAllHistory} className="text-xs text-teal-600 dark:text-teal-400 hover:underline ml-2">{selectedHistoryIds.size === historyList.length ? '取消全选' : '全选'}</button>
+            </span>
+            <button onClick={handleBatchDeleteHistory} className="px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm flex items-center gap-2 transition"><i className="fas fa-trash-alt"></i>批量删除 ({selectedHistoryIds.size})</button>
+          </div>
+        )}
+
         {/* 图片网格或历史记录 */}
         {activeTab === 'history' ? (
           historyLoading ? (
@@ -364,8 +394,9 @@ export default function Manage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {historyList.map((record) => (
-                <div key={record.id} className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
+                <div key={record.id} className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm relative group">
+                  <input type="checkbox" checked={selectedHistoryIds.has(record.id)} onChange={(e) => toggleSelectHistory(record.id, e)} onClick={(e) => e.stopPropagation()} className="absolute top-3 left-3 z-10 w-4 h-4 rounded border-gray-300 bg-white/80 checked:bg-teal-500 cursor-pointer" />
+                  <div className="flex items-center justify-between flex-wrap gap-2 ml-6">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap"><span className="text-sm font-medium text-gray-800 dark:text-white truncate">{record.filename}</span><span className="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{record.folder === 'wallpaper' || record.folder === 'sh' ? '横屏' : '竖屏'}</span></div>
                       <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatTime(record.time)}</div>
