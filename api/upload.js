@@ -6,24 +6,13 @@
 // ============================================================
 
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
-const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
+const GITHUB_REPO = process.env.GITHUB_REPO || 'Pico'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 // ============================================================
-// 🔧 自定义文件夹名（修改这里即可改变存储位置）
+// 🔧 允许的文件夹列表（独立方案，不做映射）
 // ============================================================
-// 横屏图片存储的文件夹名（前端传 wallpaper 时会映射到这个文件夹）
-const FOLDER_WALLPAPER = 'sh'
-// 竖屏图片存储的文件夹名（前端传 cover 时会映射到这个文件夹）
-const FOLDER_COVER = 'sd'
-// ============================================================
-
-// 映射函数：将前端传来的通用名称转换为实际文件夹名
-function mapFolder(folder) {
-  if (folder === 'wallpaper') return FOLDER_WALLPAPER
-  if (folder === 'cover') return FOLDER_COVER
-  return folder
-}
+const ALLOWED_FOLDERS = ['wallpaper', 'cover', 'sh', 'sd']
 
 // 获取预签名 URL（用于前端直传）
 async function getPresignedUrl(filename, folder) {
@@ -165,27 +154,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing filename or folder' })
     }
     
-    // 映射文件夹名：wallpaper → sh, cover → sd
-    const targetFolder = mapFolder(folder)
-    
-    // 验证文件夹是否有效
-    if (![FOLDER_WALLPAPER, FOLDER_COVER].includes(targetFolder)) {
+    // 验证文件夹是否允许（独立方案，不做映射）
+    if (!ALLOWED_FOLDERS.includes(folder)) {
       return res.status(400).json({ 
-        error: `Invalid folder. Use: ${FOLDER_WALLPAPER} or ${FOLDER_COVER}` 
+        error: `Invalid folder. Use: ${ALLOWED_FOLDERS.join(', ')}` 
       })
     }
     
     // 获取预签名信息
-    const presigned = await getPresignedUrl(filename, targetFolder)
+    const presigned = await getPresignedUrl(filename, folder)
     
     // 返回给前端，前端将直接 PUT 到 GitHub
     return res.status(200).json({
       success: true,
-      uploadUrl: presigned.uploadUrl,  // GitHub API 地址
-      filename: presigned.filename,     // 最终文件名
-      folder: targetFolder,             // 映射后的文件夹名（重要！）
-      path: presigned.path,             // 完整路径
-      headers: presigned.headers        // 请求头（含 Token）
+      uploadUrl: presigned.uploadUrl,
+      filename: presigned.filename,
+      folder: folder,  // 直接返回原始文件夹名
+      path: presigned.path,
+      headers: presigned.headers
     })
   }
   
@@ -204,15 +190,12 @@ export default async function handler(req, res) {
     // 解析表单数据
     const formData = parseMultipart(buffer, boundary)
     const file = formData.file
-    let rawFolder = formData.folder || 'wallpaper'
-    
-    // 映射文件夹名
-    const targetFolder = mapFolder(rawFolder)
+    let targetFolder = formData.folder || 'wallpaper'
     
     // 验证文件夹
-    if (![FOLDER_WALLPAPER, FOLDER_COVER].includes(targetFolder)) {
+    if (!ALLOWED_FOLDERS.includes(targetFolder)) {
       return res.status(400).json({ 
-        error: `Invalid folder. Use: ${FOLDER_WALLPAPER} or ${FOLDER_COVER}` 
+        error: `Invalid folder. Use: ${ALLOWED_FOLDERS.join(', ')}` 
       })
     }
     
