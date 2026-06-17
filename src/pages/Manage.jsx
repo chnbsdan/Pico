@@ -1,7 +1,13 @@
-// src/pages/Manage.jsx - 图片管理页面（使用原生懒加载 + 预加载优化）
-import React, { useState, useEffect, useRef } from 'react'
+// src/pages/Manage.jsx - 终极优化版
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchImageList, copyToClipboard, batchCopyLinks } from '../lib/api'
 import ThemeToggle from '../components/ThemeToggle'
+
+// 默认占位图（纯色背景）
+const PLACEHOLDER_SVG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23f0f0f0" width="100" height="100"/%3E%3Ctext x="50" y="50" text-anchor="middle" dy=".3em" fill="%23ccc" font-size="20"%3E🖼%3C/text%3E%3C/svg%3E'
+
+// 并发加载控制（每次最多加载 6 张）
+const CONCURRENT_LIMIT = 6
 
 export default function Manage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -14,7 +20,7 @@ export default function Manage() {
   const [copiedId, setCopiedId] = useState(null)
   
   const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 64
+  const pageSize = 48 // 从 64 减到 48，减少并发压力
   
   const [previewImage, setPreviewImage] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
@@ -25,13 +31,15 @@ export default function Manage() {
   const [searchKeyword, setSearchKeyword] = useState('')
   const [historyList, setHistoryList] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
-  
   const [selectedHistoryIds, setSelectedHistoryIds] = useState(new Set())
-
-  // 用于存储预加载的 link 元素
+  
+  // 图片加载状态
+  const [loadedImages, setLoadedImages] = useState(new Set())
+  const [failedImages, setFailedImages] = useState(new Set())
+  const imageRefs = useRef({})
   const preloadLinksRef = useRef([])
 
-  // 检查本地存储的登录状态
+  // 检查登录状态
   useEffect(() => {
     const savedAuth = localStorage.getItem('manage_auth')
     if (savedAuth === 'true') {
@@ -42,7 +50,7 @@ export default function Manage() {
 
   const getProxyUrl = (img) => {
     if (img.source === 'external') return img.url
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pico.hangdn.com'
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
     return `${baseUrl}/api/image?path=${img.folder}/${img.name}`
   }
 
@@ -50,7 +58,27 @@ export default function Manage() {
     return (img.folder === 'wallpaper' || img.folder === 'sh') ? 'aspect-video' : 'aspect-9/16'
   }
 
-  // ========== 历史记录相关函数 ==========
+  // ========== 使用 Intersection Observer 实现按需加载 ==========
+  const observeImage = useCallback((imgElement, imgName) => {
+    if (!imgElement) return
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !loadedImages.has(imgName)) {
+          setLoadedImages(prev => new Set(prev).add(imgName))
+          observer.unobserve(imgElement)
+        }
+      })
+    }, {
+      rootMargin: '200px', // 提前 200px 开始加载
+      threshold: 0.01
+    })
+    
+    observer.observe(imgElement)
+    return () => observer.disconnect()
+  }, [loadedImages])
+
+  // ========== 历史记录相关 ==========
   const loadHistory = async () => {
     setHistoryLoading(true)
     try {
@@ -103,7 +131,7 @@ export default function Manage() {
       alert('请先选择要删除的记录')
       return
     }
-    if (!confirm(`确定要删除选中的 ${selectedCount} 条记录吗？\n\n⚠️ 此操作不可恢复！`)) return
+    if (!confirm(`确定要删除选中的 ${selectedCount} 条记录吗？`)) return
     
     let successCount = 0
     let failCount = 0
@@ -137,9 +165,11 @@ export default function Manage() {
     }
   }
 
-  // ========== 图片相关函数 ==========
+  // ========== 图片相关 ==========
   const loadImages = async () => {
     setLoading(true)
+    setLoadedImages(new Set())
+    setFailedImages(new Set())
     try {
       const data = await fetchImageList()
       setImages(data.folders || { wallpaper: [], cover: [], sh: [], sd: [] })
@@ -164,7 +194,7 @@ export default function Manage() {
 
   const handleDelete = async (img, folder, event) => {
     if (event) event.stopPropagation()
-    if (!confirm(`确定要删除 "${img.name}" 吗？\n\n⚠️ 此操作不可恢复！`)) return
+    if (!confirm(`确定要删除 "${img.name}" 吗？`)) return
     
     setDeletingId(img.name)
     try {
@@ -197,7 +227,7 @@ export default function Manage() {
   const handleBatchDelete = async () => {
     const selectedCount = selectedImages.size
     if (selectedCount === 0) return alert('请先选择图片')
-    if (!confirm(`确定要删除选中的 ${selectedCount} 张图片吗？\n\n⚠️ 此操作不可恢复！`)) return
+    if (!confirm(`确定要删除选中的 ${selectedCount} 张图片吗？`)) return
     
     const selectedImgList = paginatedImages.filter(img => selectedImages.has(img.name))
     let successCount = 0
@@ -234,6 +264,8 @@ export default function Manage() {
     setSearchKeyword('')
     setSelectedImages(new Set())
     setSelectedHistoryIds(new Set())
+    setLoadedImages(new Set())
+    setFailedImages(new Set())
     setMobileMenuOpen(false)
     if (tab === 'history') loadHistory()
   }
@@ -266,7 +298,7 @@ export default function Manage() {
     setShowBatchMenu(false)
   }
 
-  // ========== 分页和搜索过滤 ==========
+  // ========== 分页和搜索 ==========
   const allImages = images[activeTab] || []
   const filteredImages = searchKeyword.trim() === ''
     ? allImages
@@ -278,16 +310,16 @@ export default function Manage() {
 
   const formatTime = (isoString) => new Date(isoString).toLocaleString('zh-CN')
 
-  // ========== 首屏图片预加载（使用原生方法） ==========
+  // ========== 预加载首屏图片 ==========
   useEffect(() => {
-    // 清理旧的预加载 link
     preloadLinksRef.current.forEach(link => {
       if (link.parentNode) link.parentNode.removeChild(link)
     })
     preloadLinksRef.current = []
 
     if (activeTab !== 'history' && paginatedImages.length > 0) {
-      const preloadCount = Math.min(6, paginatedImages.length)
+      // 只预加载前 4 张
+      const preloadCount = Math.min(4, paginatedImages.length)
       const imagesToPreload = paginatedImages.slice(0, preloadCount)
 
       imagesToPreload.forEach(img => {
@@ -297,6 +329,8 @@ export default function Manage() {
         link.href = getProxyUrl(img)
         document.head.appendChild(link)
         preloadLinksRef.current.push(link)
+        // 同时标记为已加载，避免重复加载
+        setLoadedImages(prev => new Set(prev).add(img.name))
       })
     }
 
@@ -745,9 +779,13 @@ export default function Manage() {
               {paginatedImages.map((img, idx) => {
                 const proxyUrl = getProxyUrl(img)
                 const aspectClass = getImageAspect(img)
+                const imgKey = img.sha || img.name
+                const isLoaded = loadedImages.has(img.name)
+                const hasFailed = failedImages.has(img.name)
+
                 return (
                   <div
-                    key={img.sha || idx}
+                    key={imgKey}
                     className="group bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-all hover:scale-105 hover:shadow-xl relative"
                   >
                     <input
@@ -761,17 +799,40 @@ export default function Manage() {
                       className={`${aspectClass} bg-gray-100 dark:bg-gray-900 overflow-hidden cursor-pointer relative`}
                       onClick={() => setPreviewImage(img)}
                     >
-                      {/* 使用原生 loading="lazy" + 预加载优化 */}
+                      {/* 使用占位图 + 按需加载 */}
                       <img
-                        src={proxyUrl}
+                        ref={(el) => {
+                          if (el && !isLoaded && !hasFailed) {
+                            // 使用 Intersection Observer 检测可见性
+                            const observer = new IntersectionObserver((entries) => {
+                              entries.forEach(entry => {
+                                if (entry.isIntersecting && !loadedImages.has(img.name)) {
+                                  setLoadedImages(prev => new Set(prev).add(img.name))
+                                  observer.unobserve(el)
+                                }
+                              })
+                            }, { rootMargin: '200px', threshold: 0.01 })
+                            observer.observe(el)
+                            return () => observer.disconnect()
+                          }
+                        }}
+                        src={isLoaded ? proxyUrl : PLACEHOLDER_SVG}
                         alt={img.name}
                         loading="lazy"
                         decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        className={`w-full h-full object-cover transition-opacity duration-300 ${
+                          isLoaded ? 'opacity-100' : 'opacity-50'
+                        } group-hover:scale-110 transition-transform duration-300`}
                         onError={(e) => {
-                          e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" text-anchor="middle" dy=".3em" fill="%23ccc">?</text></svg>'
+                          setFailedImages(prev => new Set(prev).add(img.name))
+                          e.target.src = PLACEHOLDER_SVG
                         }}
                       />
+                      {!isLoaded && !hasFailed && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                         <i className="fas fa-search-plus text-white text-sm"></i>
                       </div>
