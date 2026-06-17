@@ -1,11 +1,7 @@
-// src/pages/Manage.jsx - 图片管理页面（含历史记录批量删除 + 懒加载优化）
+// src/pages/Manage.jsx - 图片管理页面（使用原生懒加载 + 预加载优化）
 import React, { useState, useEffect, useRef } from 'react'
 import { fetchImageList, copyToClipboard, batchCopyLinks } from '../lib/api'
 import ThemeToggle from '../components/ThemeToggle'
-
-// 【新增】懒加载组件（如未安装，请运行 npm install react-lazy-load-image-component）
-import { LazyLoadImage } from 'react-lazy-load-image-component'
-import 'react-lazy-load-image-component/src/effects/blur.css'
 
 export default function Manage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -30,10 +26,9 @@ export default function Manage() {
   const [historyList, setHistoryList] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   
-  // 历史记录批量选择状态
   const [selectedHistoryIds, setSelectedHistoryIds] = useState(new Set())
 
-  // 【新增】用于存储预加载的 link 元素，便于清理
+  // 用于存储预加载的 link 元素
   const preloadLinksRef = useRef([])
 
   // 检查本地存储的登录状态
@@ -82,7 +77,6 @@ export default function Manage() {
     }
   }
 
-  // 切换历史记录选择
   const toggleSelectHistory = (id, e) => {
     if (e) e.stopPropagation()
     const newSelected = new Set(selectedHistoryIds)
@@ -94,7 +88,6 @@ export default function Manage() {
     setSelectedHistoryIds(newSelected)
   }
 
-  // 全选/取消全选历史记录
   const selectAllHistory = () => {
     if (selectedHistoryIds.size === historyList.length) {
       setSelectedHistoryIds(new Set())
@@ -104,7 +97,6 @@ export default function Manage() {
     }
   }
 
-  // 批量删除历史记录
   const handleBatchDeleteHistory = async () => {
     const selectedCount = selectedHistoryIds.size
     if (selectedCount === 0) {
@@ -202,7 +194,6 @@ export default function Manage() {
     }
   }
 
-  // 批量删除图片
   const handleBatchDelete = async () => {
     const selectedCount = selectedImages.size
     if (selectedCount === 0) return alert('请先选择图片')
@@ -247,7 +238,6 @@ export default function Manage() {
     if (tab === 'history') loadHistory()
   }
 
-  // ========== 批量选择图片 ==========
   const toggleSelect = (imgName, e) => {
     if (e) e.stopPropagation()
     const newSelected = new Set(selectedImages)
@@ -267,7 +257,6 @@ export default function Manage() {
     }
   }
 
-  // ========== 批量复制 ==========
   const handleBatchCopy = async (format) => {
     const selectedUrls = paginatedImages
       .filter(img => selectedImages.has(img.name))
@@ -289,7 +278,7 @@ export default function Manage() {
 
   const formatTime = (isoString) => new Date(isoString).toLocaleString('zh-CN')
 
-  // ========== 【新增】首屏图片预加载 ==========
+  // ========== 首屏图片预加载（使用原生方法） ==========
   useEffect(() => {
     // 清理旧的预加载 link
     preloadLinksRef.current.forEach(link => {
@@ -297,9 +286,7 @@ export default function Manage() {
     })
     preloadLinksRef.current = []
 
-    // 只在有图片且非历史记录标签时执行
     if (activeTab !== 'history' && paginatedImages.length > 0) {
-      // 预加载前 6 张图片
       const preloadCount = Math.min(6, paginatedImages.length)
       const imagesToPreload = paginatedImages.slice(0, preloadCount)
 
@@ -313,7 +300,6 @@ export default function Manage() {
       })
     }
 
-    // 组件卸载时清理
     return () => {
       preloadLinksRef.current.forEach(link => {
         if (link.parentNode) link.parentNode.removeChild(link)
@@ -371,7 +357,6 @@ export default function Manage() {
     <div className="min-h-screen py-6 px-4 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <ThemeToggle />
 
-      {/* 移动端菜单按钮 */}
       <button
         onClick={() => setMobileMenuOpen(true)}
         className="fixed top-4 left-4 z-50 lg:hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 transition p-2.5 rounded-lg text-gray-700 dark:text-white shadow-md"
@@ -379,7 +364,6 @@ export default function Manage() {
         <i className="fas fa-bars text-lg"></i>
       </button>
 
-      {/* 左侧悬浮目录 */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 lg:hidden"
@@ -438,7 +422,6 @@ export default function Manage() {
         </div>
 
         <div className="p-2">
-          {/* 四个文件夹目录 */}
           {['wallpaper', 'cover', 'sh', 'sd'].map((folderName) => {
             const displayName = {
               wallpaper: '横屏图片',
@@ -478,7 +461,6 @@ export default function Manage() {
             )
           })}
 
-          {/* 历史记录目录 */}
           <div
             onClick={() => handleTabChange('history')}
             className={`
@@ -500,9 +482,7 @@ export default function Manage() {
         </div>
       </div>
 
-      {/* 右侧内容区 */}
       <div className="lg:pl-[250px]">
-        {/* 标题栏 */}
         <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -561,7 +541,6 @@ export default function Manage() {
           </div>
         </div>
 
-        {/* 搜索框（仅在图片标签页显示） */}
         {activeTab !== 'history' && (
           <div className="mb-4">
             <div className="relative">
@@ -588,7 +567,6 @@ export default function Manage() {
           </div>
         )}
 
-        {/* 批量操作栏（图片） */}
         {activeTab !== 'history' && selectedImages.size > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 mb-4 flex items-center justify-between flex-wrap gap-2 border border-blue-200 dark:border-blue-800">
             <span className="text-blue-700 dark:text-blue-300 text-sm flex items-center gap-2">
@@ -645,7 +623,6 @@ export default function Manage() {
           </div>
         )}
 
-        {/* 批量操作栏（历史记录） */}
         {activeTab === 'history' && selectedHistoryIds.size > 0 && (
           <div className="bg-teal-50 dark:bg-teal-900/30 rounded-xl p-3 mb-4 flex items-center justify-between flex-wrap gap-2 border border-teal-200 dark:border-teal-800">
             <span className="text-teal-700 dark:text-teal-300 text-sm flex items-center gap-2">
@@ -668,7 +645,6 @@ export default function Manage() {
           </div>
         )}
 
-        {/* 图片网格或历史记录列表 */}
         {activeTab === 'history' ? (
           historyLoading ? (
             <div className="flex justify-center items-center py-20">
@@ -785,13 +761,12 @@ export default function Manage() {
                       className={`${aspectClass} bg-gray-100 dark:bg-gray-900 overflow-hidden cursor-pointer relative`}
                       onClick={() => setPreviewImage(img)}
                     >
-                      {/* 【核心优化】替换为 LazyLoadImage 组件 */}
-                      <LazyLoadImage
+                      {/* 使用原生 loading="lazy" + 预加载优化 */}
+                      <img
                         src={proxyUrl}
                         alt={img.name}
-                        effect="blur"
-                        threshold={100}
-                        wrapperClassName="w-full h-full"
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                         onError={(e) => {
                           e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" text-anchor="middle" dy=".3em" fill="%23ccc">?</text></svg>'
@@ -839,7 +814,6 @@ export default function Manage() {
               })}
             </div>
 
-            {/* 底部分页 */}
             {totalPages > 1 && (
               <div className="flex justify-center gap-1 sm:gap-2 mt-6">
                 <button
@@ -879,7 +853,6 @@ export default function Manage() {
         )}
       </div>
 
-      {/* 图片预览弹窗 */}
       {previewImage && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
