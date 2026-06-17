@@ -1,4 +1,4 @@
-// Pico/api/image.js - 统一图片代理（Vercel 版，支持 302 重定向 + 私有仓库）
+// Pico/api/image.js - 统一图片代理（Vercel 版，支持 302 重定向 + 私有仓库 + 强缓存）
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -19,6 +19,12 @@ function getContentType(filename) {
     'svg': 'image/svg+xml'
   }
   return types[ext] || 'image/jpeg'
+}
+
+// 生成 ETag（基于文件路径 + 内容）
+function generateETag(content) {
+  const crypto = require('crypto')
+  return crypto.createHash('md5').update(content).digest('hex')
 }
 
 export default async function handler(req, res) {
@@ -45,9 +51,9 @@ export default async function handler(req, res) {
   // 构建 GitHub raw URL
   const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${folder}/${filename}`
 
-  // 设置响应头
+  // 设置跨域和缓存头（核心优化：强缓存 1 年）
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Cache-Control', 'public, max-age=86400')
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
   res.setHeader('Content-Disposition', 'inline')
 
   try {
@@ -81,10 +87,22 @@ export default async function handler(req, res) {
       return res.status(404).send('Image not found')
     }
 
+    // 获取图片数据
     const body = await response.arrayBuffer()
+    const buffer = Buffer.from(body)
     const contentType = getContentType(filename)
     res.setHeader('Content-Type', contentType)
-    res.send(Buffer.from(body))
+
+    // 【新增】生成并返回 ETag，支持 304 缓存协商
+    const etag = generateETag(buffer)
+    res.setHeader('ETag', etag)
+
+    // 检查客户端是否已有缓存（304）
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end()
+    }
+
+    res.send(buffer)
   } catch (error) {
     console.error('Image proxy error:', error)
     res.status(500).send('Internal server error')
