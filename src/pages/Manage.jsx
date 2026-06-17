@@ -1,7 +1,11 @@
-// src/pages/Manage.jsx - 图片管理页面（含历史记录批量删除）
-import React, { useState, useEffect } from 'react'
+// src/pages/Manage.jsx - 图片管理页面（含历史记录批量删除 + 懒加载优化）
+import React, { useState, useEffect, useRef } from 'react'
 import { fetchImageList, copyToClipboard, batchCopyLinks } from '../lib/api'
 import ThemeToggle from '../components/ThemeToggle'
+
+// 【新增】懒加载组件（如未安装，请运行 npm install react-lazy-load-image-component）
+import { LazyLoadImage } from 'react-lazy-load-image-component'
+import 'react-lazy-load-image-component/src/effects/blur.css'
 
 export default function Manage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -28,6 +32,9 @@ export default function Manage() {
   
   // 历史记录批量选择状态
   const [selectedHistoryIds, setSelectedHistoryIds] = useState(new Set())
+
+  // 【新增】用于存储预加载的 link 元素，便于清理
+  const preloadLinksRef = useRef([])
 
   // 检查本地存储的登录状态
   useEffect(() => {
@@ -281,6 +288,39 @@ export default function Manage() {
   const paginatedImages = filteredImages.slice(startIndex, startIndex + pageSize)
 
   const formatTime = (isoString) => new Date(isoString).toLocaleString('zh-CN')
+
+  // ========== 【新增】首屏图片预加载 ==========
+  useEffect(() => {
+    // 清理旧的预加载 link
+    preloadLinksRef.current.forEach(link => {
+      if (link.parentNode) link.parentNode.removeChild(link)
+    })
+    preloadLinksRef.current = []
+
+    // 只在有图片且非历史记录标签时执行
+    if (activeTab !== 'history' && paginatedImages.length > 0) {
+      // 预加载前 6 张图片
+      const preloadCount = Math.min(6, paginatedImages.length)
+      const imagesToPreload = paginatedImages.slice(0, preloadCount)
+
+      imagesToPreload.forEach(img => {
+        const link = document.createElement('link')
+        link.rel = 'preload'
+        link.as = 'image'
+        link.href = getProxyUrl(img)
+        document.head.appendChild(link)
+        preloadLinksRef.current.push(link)
+      })
+    }
+
+    // 组件卸载时清理
+    return () => {
+      preloadLinksRef.current.forEach(link => {
+        if (link.parentNode) link.parentNode.removeChild(link)
+      })
+      preloadLinksRef.current = []
+    }
+  }, [activeTab, currentPage, searchKeyword, images])
 
   // ========== 未登录界面 ==========
   if (!isAuthenticated) {
@@ -745,11 +785,14 @@ export default function Manage() {
                       className={`${aspectClass} bg-gray-100 dark:bg-gray-900 overflow-hidden cursor-pointer relative`}
                       onClick={() => setPreviewImage(img)}
                     >
-                      <img
-                        src={img.url}
+                      {/* 【核心优化】替换为 LazyLoadImage 组件 */}
+                      <LazyLoadImage
+                        src={proxyUrl}
                         alt={img.name}
+                        effect="blur"
+                        threshold={100}
+                        wrapperClassName="w-full h-full"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        loading="lazy"
                         onError={(e) => {
                           e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" text-anchor="middle" dy=".3em" fill="%23ccc">?</text></svg>'
                         }}
@@ -847,7 +890,7 @@ export default function Manage() {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={previewImage.url}
+              src={getProxyUrl(previewImage)}
               alt={previewImage.name}
               className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
             />
