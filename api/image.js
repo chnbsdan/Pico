@@ -1,12 +1,10 @@
-// api/image.js - 统一图片代理（纯代理模式，不走302重定向）
+// api/image.js - 统一加强版（纯代理 + ETag + 超时控制）
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
-// 允许的文件夹列表
 const ALLOWED_FOLDERS = ['wallpaper', 'cover', 'sh', 'sd']
 
-// 根据扩展名获取 Content-Type
 function getContentType(filename) {
   const ext = filename.split('.').pop().toLowerCase()
   const types = {
@@ -21,7 +19,6 @@ function getContentType(filename) {
   return types[ext] || 'image/jpeg'
 }
 
-// 生成 ETag
 function generateETag(content) {
   const crypto = require('crypto')
   return crypto.createHash('md5').update(content).digest('hex')
@@ -34,12 +31,10 @@ export default async function handler(req, res) {
     return res.status(400).send('Missing path parameter')
   }
 
-  // 解析路径：folder/filename
   const parts = path.split('/')
   const folder = parts[0]
   const filename = parts.slice(1).join('/')
 
-  // 验证文件夹
   if (!ALLOWED_FOLDERS.includes(folder)) {
     return res.status(403).send('Invalid folder')
   }
@@ -48,15 +43,10 @@ export default async function handler(req, res) {
     return res.status(403).send('Invalid filename')
   }
 
-  // 构建 GitHub raw URL
   const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${folder}/${filename}`
 
-  // ============================================================
-  // 强制走代理模式（不走302重定向，私有仓库必须用Token认证）
-  // ============================================================
-
   try {
-    // 设置超时（8秒）
+    // 超时控制（8秒）
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 8000)
 
@@ -77,13 +67,12 @@ export default async function handler(req, res) {
       return res.status(response.status).send('Image not found')
     }
 
-    // 获取图片数据
     const body = await response.arrayBuffer()
     const buffer = Buffer.from(body)
     const contentType = getContentType(filename)
     const etag = generateETag(buffer)
 
-    // 设置缓存头
+    // 缓存头（强缓存1年）
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     res.setHeader('Content-Type', contentType)
