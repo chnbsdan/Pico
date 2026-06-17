@@ -1,14 +1,12 @@
-// api/image.js - 终极优化版（带超时控制、缓存、并发限制）
+// Pico/api/image.js - 统一图片代理（Vercel 版，支持 302 重定向 + 私有仓库）
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
+// 允许的文件夹列表
 const ALLOWED_FOLDERS = ['wallpaper', 'cover', 'sh', 'sd']
 
-// 内存缓存（Vercel 无状态，但可以减少重复请求）
-const memoryCache = new Map()
-const CACHE_TTL = 60 * 60 * 1000 // 1小时
-
+// 根据扩展名获取 Content-Type
 function getContentType(filename) {
   const ext = filename.split('.').pop().toLowerCase()
   const types = {
@@ -23,11 +21,6 @@ function getContentType(filename) {
   return types[ext] || 'image/jpeg'
 }
 
-function generateETag(content) {
-  const crypto = require('crypto')
-  return crypto.createHash('md5').update(content).digest('hex')
-}
-
 export default async function handler(req, res) {
   const { path } = req.query
 
@@ -35,10 +28,12 @@ export default async function handler(req, res) {
     return res.status(400).send('Missing path parameter')
   }
 
+  // 解析路径：folder/filename
   const parts = path.split('/')
   const folder = parts[0]
   const filename = parts.slice(1).join('/')
 
+  // 验证文件夹
   if (!ALLOWED_FOLDERS.includes(folder)) {
     return res.status(403).send('Invalid folder')
   }
@@ -47,92 +42,51 @@ export default async function handler(req, res) {
     return res.status(403).send('Invalid filename')
   }
 
-  const cacheKey = `${folder}/${filename}`
+  // 构建 GitHub raw URL
   const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${folder}/${filename}`
 
-  // ============================================================
-  // 1. 检查内存缓存
-  // ============================================================
-  if (memoryCache.has(cacheKey)) {
-    const cached = memoryCache.get(cacheKey)
-    if (Date.now() - cached.timestamp < CACHE_TTL) {
-      // 缓存命中，直接返回
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
-      res.setHeader('Content-Type', cached.contentType)
-      res.setHeader('ETag', cached.etag)
-      res.setHeader('X-Cache', 'HIT')
-      
-      if (req.headers['if-none-match'] === cached.etag) {
-        return res.status(304).end()
-      }
-      
-      return res.send(cached.buffer)
-    }
-    memoryCache.delete(cacheKey)
-  }
-
-  // ============================================================
-  // 2. 设置超时控制（10秒超时，避免长时间等待）
-  // ============================================================
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 10000)
+  // 设置响应头
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Cache-Control', 'public, max-age=86400')
+  res.setHeader('Content-Disposition', 'inline')
 
   try {
+    // 方式1：如果有 Token，使用 302 重定向到 raw URL（更快，不消耗 Vercel 带宽）
+    if (GITHUB_TOKEN) {
+      // 先验证文件是否存在（HEAD 请求）
+      const headResponse = await fetch(rawUrl, {
+        method: 'HEAD',
+        headers: {
+          'Authorization': `Bearer ${GITHUB_TOKEN}`,
+          'User-Agent': 'Vercel-Serverless'
+        }
+      })
+
+      if (headResponse.ok) {
+        // 302 重定向到 raw URL，浏览器直接访问，不经过 Vercel
+        res.setHeader('Location', rawUrl)
+        return res.status(302).end()
+      }
+    }
+
+    // 方式2：没有 Token 或 HEAD 请求失败，使用代理方式返回
     const response = await fetch(rawUrl, {
       headers: GITHUB_TOKEN ? {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
         'User-Agent': 'Vercel-Serverless'
-      } : {
-        'User-Agent': 'Vercel-Serverless'
-      },
-      signal: controller.signal
+      } : {}
     })
 
-    clearTimeout(timeoutId)
-
     if (!response.ok) {
-      console.error(`GitHub API error: ${response.status} for ${rawUrl}`)
-      return res.status(response.status).send('Image not found')
+      return res.status(404).send('Image not found')
     }
 
     const body = await response.arrayBuffer()
-    const buffer = Buffer.from(body)
     const contentType = getContentType(filename)
-    const etag = generateETag(buffer)
-
-    // ============================================================
-    // 3. 存入内存缓存
-    // ============================================================
-    memoryCache.set(cacheKey, {
-      buffer,
-      contentType,
-      etag,
-      timestamp: Date.now()
-    })
-
-    // ============================================================
-    // 4. 设置响应头
-    // ============================================================
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     res.setHeader('Content-Type', contentType)
-    res.setHeader('ETag', etag)
-    res.setHeader('X-Cache', 'MISS')
-
-    if (req.headers['if-none-match'] === etag) {
-      return res.status(304).end()
-    }
-
-    res.send(buffer)
+    res.send(Buffer.from(body))
   } catch (error) {
-    clearTimeout(timeoutId)
     console.error('Image proxy error:', error)
-    
-    if (error.name === 'AbortError') {
-      res.status(504).send('Gateway Timeout')
-    } else {
-      res.status(500).send('Internal server error')
-    }
+    res.status(500).send('Internal server error')
   }
 }
