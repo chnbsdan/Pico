@@ -1,4 +1,4 @@
-// Pico/api/image.js - 统一图片代理（Vercel 版，支持 302 重定向 + 私有仓库）
+// api/image.js - 统一图片代理（纯代理模式，不走302重定向）
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -19,6 +19,12 @@ function getContentType(filename) {
     'svg': 'image/svg+xml'
   }
   return types[ext] || 'image/jpeg'
+}
+
+// 生成 ETag
+function generateETag(content) {
+  const crypto = require('crypto')
+  return crypto.createHash('md5').update(content).digest('hex')
 }
 
 export default async function handler(req, res) {
@@ -45,48 +51,58 @@ export default async function handler(req, res) {
   // 构建 GitHub raw URL
   const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${folder}/${filename}`
 
-  // 设置响应头
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Cache-Control', 'public, max-age=86400')
-  res.setHeader('Content-Disposition', 'inline')
+  // ============================================================
+  // 强制走代理模式（不走302重定向，私有仓库必须用Token认证）
+  // ============================================================
 
   try {
-    // 方式1：如果有 Token，使用 302 重定向到 raw URL（更快，不消耗 Vercel 带宽）
-    if (GITHUB_TOKEN) {
-      // 先验证文件是否存在（HEAD 请求）
-      const headResponse = await fetch(rawUrl, {
-        method: 'HEAD',
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'User-Agent': 'Vercel-Serverless'
-        }
-      })
+    // 设置超时（8秒）
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000)
 
-      if (headResponse.ok) {
-        // 302 重定向到 raw URL，浏览器直接访问，不经过 Vercel
-        res.setHeader('Location', rawUrl)
-        return res.status(302).end()
-      }
-    }
-
-    // 方式2：没有 Token 或 HEAD 请求失败，使用代理方式返回
     const response = await fetch(rawUrl, {
       headers: GITHUB_TOKEN ? {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
         'User-Agent': 'Vercel-Serverless'
-      } : {}
+      } : {
+        'User-Agent': 'Vercel-Serverless'
+      },
+      signal: controller.signal
     })
 
+    clearTimeout(timeoutId)
+
     if (!response.ok) {
-      return res.status(404).send('Image not found')
+      console.error(`GitHub API error: ${response.status} for ${rawUrl}`)
+      return res.status(response.status).send('Image not found')
     }
 
+    // 获取图片数据
     const body = await response.arrayBuffer()
+    const buffer = Buffer.from(body)
     const contentType = getContentType(filename)
+    const etag = generateETag(buffer)
+
+    // 设置缓存头
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     res.setHeader('Content-Type', contentType)
-    res.send(Buffer.from(body))
+    res.setHeader('Content-Disposition', 'inline')
+    res.setHeader('ETag', etag)
+
+    // 304 协商缓存
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end()
+    }
+
+    res.send(buffer)
   } catch (error) {
     console.error('Image proxy error:', error)
-    res.status(500).send('Internal server error')
+    
+    if (error.name === 'AbortError') {
+      res.status(504).send('Gateway Timeout')
+    } else {
+      res.status(500).send('Internal server error')
+    }
   }
 }
