@@ -1,4 +1,4 @@
-// Pico/api/image.js - 统一图片代理（Vercel 版，支持 302 重定向 + 私有仓库 + 强缓存）
+// api/image.js - 纯代理模式（不走 302 重定向，充分利用 Vercel 缓存）
 const GITHUB_USER = process.env.GITHUB_USER || 'chnbsdan'
 const GITHUB_REPO = process.env.GITHUB_REPO || 'pcbed'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -21,7 +21,7 @@ function getContentType(filename) {
   return types[ext] || 'image/jpeg'
 }
 
-// 生成 ETag（基于文件路径 + 内容）
+// 生成 ETag（基于图片内容）
 function generateETag(content) {
   const crypto = require('crypto')
   return crypto.createHash('md5').update(content).digest('hex')
@@ -51,49 +51,41 @@ export default async function handler(req, res) {
   // 构建 GitHub raw URL
   const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${folder}/${filename}`
 
-  // 设置跨域和缓存头（核心优化：强缓存 1 年）
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
-  res.setHeader('Content-Disposition', 'inline')
+  // ============================================================
+  // ⚠️ 关键：强制走代理模式，不走 302 重定向
+  // 原因：302 会绕过 Vercel 缓存，且 GitHub raw 域名可能被限制
+  // ============================================================
 
   try {
-    // 方式1：如果有 Token，使用 302 重定向到 raw URL（更快，不消耗 Vercel 带宽）
-    if (GITHUB_TOKEN) {
-      // 先验证文件是否存在（HEAD 请求）
-      const headResponse = await fetch(rawUrl, {
-        method: 'HEAD',
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'User-Agent': 'Vercel-Serverless'
-        }
-      })
-
-      if (headResponse.ok) {
-        // 302 重定向到 raw URL，浏览器直接访问，不经过 Vercel
-        res.setHeader('Location', rawUrl)
-        return res.status(302).end()
-      }
-    }
-
-    // 方式2：没有 Token 或 HEAD 请求失败，使用代理方式返回
+    // 直接 fetch 图片内容（代理模式）
     const response = await fetch(rawUrl, {
       headers: GITHUB_TOKEN ? {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
         'User-Agent': 'Vercel-Serverless'
-      } : {}
+      } : {
+        'User-Agent': 'Vercel-Serverless'
+      }
     })
 
     if (!response.ok) {
-      return res.status(404).send('Image not found')
+      console.error(`GitHub API error: ${response.status} for ${rawUrl}`)
+      return res.status(response.status).send('Image not found')
     }
 
     // 获取图片数据
     const body = await response.arrayBuffer()
     const buffer = Buffer.from(body)
     const contentType = getContentType(filename)
-    res.setHeader('Content-Type', contentType)
 
-    // 【新增】生成并返回 ETag，支持 304 缓存协商
+    // ============================================================
+    // 设置缓存头（核心优化）
+    // ============================================================
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    res.setHeader('Content-Type', contentType)
+    res.setHeader('Content-Disposition', 'inline')
+
+    // ETag 支持 304 协商缓存
     const etag = generateETag(buffer)
     res.setHeader('ETag', etag)
 
@@ -102,6 +94,7 @@ export default async function handler(req, res) {
       return res.status(304).end()
     }
 
+    // 返回图片数据
     res.send(buffer)
   } catch (error) {
     console.error('Image proxy error:', error)
